@@ -1,4 +1,3 @@
-
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -20,6 +19,14 @@
         body { background-color: #0f172a; overflow-x: hidden; }
         .pixel-border {
             box-shadow: 0 4px 0 0 #1e293b;
+        }
+        /* BGM用iframeを隠す */
+        .bgm-player {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -71,8 +78,9 @@
             const [p2, setP2] = useState(null);
             const [turn, setTurn] = useState("player");
             const [busy, setBusy] = useState(false);
-            const [over, setOver] = useState(false); // false | 'win' | 'lose' | 'caught'
+            const [over, setOver] = useState(false); 
             const [logs, setLogs] = useState(["ポケモンを えらんでね！"]);
+            const [bgmActive, setBgmActive] = useState(false);
             
             const [activeEffect, setActiveEffect] = useState(null);
             const [shake, setShake] = useState(0);
@@ -100,33 +108,29 @@
                 setP1({ ...char1, curHp: char1.hp, defBoost: 1, atkBoost: 1, key: p1Key });
                 setP2({ ...char2, curHp: char2.hp, defBoost: 1, atkBoost: 1, key: p2Key });
                 setGameState('battle');
+                setBgmActive(true); // バトル開始でBGMを有効化
                 setLogs([`ゆけっ！ ${char1.name}！`, `野生の ${char2.name}が あらわれた！`]);
                 setTurn("player");
                 setOver(false);
                 ballAnimRef.current = { active: false, progress: 0, status: 'none', shakeCount: 0 };
             };
 
-            // 捕獲処理
             const tryCatch = async () => {
                 if (busy || over) return;
                 setBusy(true);
+                setBgmActive(true); // 念のためクリック時にもBGMフラグを立てる
                 addLog(`${p1.name}は モンスターボールを 投げた！`);
 
-                // 投げるアニメーション開始
                 ballAnimRef.current = { active: true, progress: 0, status: 'flying', shakeCount: 0 };
-                
-                await new Promise(r => setTimeout(r, 1000)); // 飛翔中
+                await new Promise(r => setTimeout(r, 1000)); 
 
                 ballAnimRef.current.status = 'shaking';
-                // 捕獲率計算 (残りHPが少ないほど高い)
                 const catchChance = (1 - (p2.curHp / p2.hp)) * 0.7 + 0.15;
                 const isSuccess = Math.random() < catchChance;
 
-                // 3回揺れる演出
                 for (let i = 1; i <= 3; i++) {
                     await new Promise(r => setTimeout(r, 700));
                     if (!isSuccess && i === Math.floor(Math.random() * 3) + 1) {
-                        // 失敗
                         ballAnimRef.current.active = false;
                         addLog(`だめだ！ ${p2.name}は ボールから ぬけだした！`);
                         triggerShake(5);
@@ -139,7 +143,6 @@
                     ballAnimRef.current.shakeCount = i;
                 }
 
-                // 成功
                 addLog(`やったー！ ${p2.name}を つかまえたぞ！`);
                 ballAnimRef.current.status = 'success';
                 setOver('caught');
@@ -149,6 +152,7 @@
             const executeTurn = async (attackerSide, moveIndex) => {
                 if (busy || over) return;
                 setBusy(true);
+                setBgmActive(true); 
 
                 const isP1 = attackerSide === "player";
                 const attacker = isP1 ? p1 : p2;
@@ -221,28 +225,19 @@
                 ctx.save();
                 ctx.translate(x, y);
                 ctx.rotate(rotation);
-                
-                // Shadow
                 ctx.fillStyle = 'rgba(0,0,0,0.2)';
                 ctx.beginPath(); ctx.ellipse(0, size/2, size/1.5, size/4, 0, 0, Math.PI*2); ctx.fill();
-
-                // Ball Body
                 ctx.fillStyle = '#fff';
                 ctx.beginPath(); ctx.arc(0, 0, size/2, 0, Math.PI, false); ctx.fill();
                 ctx.fillStyle = '#ef4444';
                 ctx.beginPath(); ctx.arc(0, 0, size/2, Math.PI, Math.PI*2, false); ctx.fill();
-
-                // Outline & Line
                 ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.arc(0, 0, size/2, 0, Math.PI*2); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(-size/2, 0); ctx.lineTo(size/2, 0); ctx.stroke();
-
-                // Center button
                 ctx.fillStyle = '#fff';
                 ctx.beginPath(); ctx.arc(0, 0, size/6, 0, Math.PI*2); ctx.fill();
                 ctx.stroke();
                 ctx.beginPath(); ctx.arc(0, 0, size/12, 0, Math.PI*2); ctx.stroke();
-
                 if (status === 'success') {
                     ctx.shadowBlur = 15; ctx.shadowColor = '#fbbf24'; ctx.stroke();
                 }
@@ -260,7 +255,6 @@
                     ctx.save();
                     if (shake > 0) ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
 
-                    // Background
                     const gradient = ctx.createLinearGradient(0, 0, 0, h);
                     gradient.addColorStop(0, '#1e293b'); gradient.addColorStop(1, '#0f172a');
                     ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h);
@@ -269,7 +263,6 @@
                     ctx.beginPath(); ctx.ellipse(w * 0.25, h * 0.8, 120, 30, 0, 0, Math.PI * 2); ctx.fill();
                     ctx.beginPath(); ctx.ellipse(w * 0.75, h * 0.35, 90, 20, 0, 0, Math.PI * 2); ctx.fill();
 
-                    // ポケモン描画 (ボールに入っている間は敵を隠す)
                     const isP2Visible = !(ballAnimRef.current.active && ballAnimRef.current.status !== 'flying');
                     const drawPoke = (img, x, y, size, action) => {
                         ctx.save();
@@ -284,7 +277,6 @@
                     if (isP2Visible) drawPoke(imagesRef.current.p2, w * 0.65, h * 0.05, 160, p2Action);
                     drawPoke(imagesRef.current.p1, w * 0.1, h * 0.45, 220, p1Action);
 
-                    // モンスターボール
                     if (ballAnimRef.current.active) {
                         const { status, progress } = ballAnimRef.current;
                         const startX = w * 0.25, startY = h * 0.6;
@@ -297,14 +289,12 @@
                             drawPokeball(ctx, curX, curY, 24, p * Math.PI * 4, 'none');
                             ballAnimRef.current.progress = Math.min(1, p + 0.03);
                         } else {
-                            // 揺れる演出
                             const shakeOffset = Math.sin(Date.now() / 60) * 8;
                             const isActuallyShaking = (Date.now() % 700 < 350);
                             drawPokeball(ctx, targetX, targetY + 30, 24, isActuallyShaking ? shakeOffset * 0.02 : 0, status);
                         }
                     }
 
-                    // Effects
                     if (activeEffect) {
                         const tx = activeEffect.target === 'p2' ? w * 0.75 : w * 0.25;
                         const ty = activeEffect.target === 'p2' ? h * 0.25 : h * 0.7;
@@ -327,7 +317,6 @@
                         }
                     }
 
-                    // UI HP
                     const drawStatus = (x, y, data) => {
                         ctx.save(); ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 3;
                         ctx.beginPath(); ctx.roundRect(x, y, 220, 70, 12); ctx.fill(); ctx.stroke();
@@ -372,6 +361,15 @@
 
             return (
                 <div className="bg-slate-800 rounded-3xl shadow-2xl overflow-hidden border-4 border-slate-600 select-none">
+                    {/* BGM Player (Hidden IFrame) */}
+                    {bgmActive && (
+                        <iframe 
+                            className="bgm-player"
+                            src="https://www.youtube.com/embed/Q53CDIGPJ58?start=407&end=492&autoplay=1&loop=1&playlist=Q53CDIGPJ58" 
+                            allow="autoplay"
+                        ></iframe>
+                    )}
+
                     {/* Header */}
                     <div className="bg-slate-900 p-3 text-white flex justify-between items-center px-4 md:px-8 border-b-2 border-slate-700">
                         <div className="flex items-center gap-2">
@@ -389,7 +387,7 @@
                                 <h2 className="text-5xl font-black mb-6 font-pixel text-yellow-400 italic text-center">
                                     {over === 'win' ? "勝利！" : over === 'caught' ? "つかまえた！" : "敗北..."}
                                 </h2>
-                                <button onClick={() => setGameState('select')} className="bg-white text-slate-900 px-10 py-3 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel">
+                                <button onClick={() => { setGameState('select'); setBgmActive(false); }} className="bg-white text-slate-900 px-10 py-3 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel">
                                     タイトルへ
                                 </button>
                             </div>
@@ -431,7 +429,7 @@
                             >
                                 モンスターボール
                             </button>
-                            <button onClick={() => setGameState('select')} className="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-white border-2 border-slate-600 p-2 text-xs font-bold rounded-xl transition-all">にげる</button>
+                            <button onClick={() => { setGameState('select'); setBgmActive(false); }} className="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-white border-2 border-slate-600 p-2 text-xs font-bold rounded-xl transition-all">にげる</button>
                             <div className="flex items-center justify-center bg-slate-900/40 rounded-xl border border-slate-700">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{turn === "player" ? "Your Turn" : "CPU..."}</span>
                             </div>
@@ -444,5 +442,3 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
-</body>
-</html>
