@@ -1,0 +1,448 @@
+
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポケモンバトル：カスタムエディション</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel standalone -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+        .font-pixel { font-family: 'DotGothic16', sans-serif; }
+        canvas { image-rendering: pixelated; }
+        .log-container::-webkit-scrollbar { width: 4px; }
+        .log-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        body { background-color: #0f172a; overflow-x: hidden; }
+        .pixel-border {
+            box-shadow: 0 4px 0 0 #1e293b;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-2 md:p-4">
+    <div id="root" class="w-full max-w-2xl"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- Data Definitions ---
+        const POKEMON_DATA = {
+            pikachu: { id: 25, name: "ピカチュウ", type: "electric", hp: 100, color: "#facc15", 
+                moves: [
+                    { name: "でんきショック", power: 40, acc: 100, type: "electric" },
+                    { name: "アイアンテール", power: 100, acc: 75, type: "steel" },
+                    { name: "でんこうせっか", power: 40, acc: 100, type: "normal" },
+                    { name: "10まんボルト", power: 90, acc: 100, type: "electric" }
+                ]
+            },
+            squirtle: { id: 7, name: "ゼニガメ", type: "water", hp: 120, color: "#60a5fa",
+                moves: [
+                    { name: "みずてっぽう", power: 40, acc: 100, type: "water" },
+                    { name: "メガトンパンチ", power: 80, acc: 85, type: "normal" },
+                    { name: "たいあたり", power: 40, acc: 100, type: "normal" },
+                    { name: "からにこもる", power: 0, acc: 100, type: "water", status: "def_up" }
+                ]
+            },
+            scyther: { id: 123, name: "ストライク", type: "bug", hp: 110, color: "#4ade80",
+                moves: [
+                    { name: "れんぞくぎり", power: 40, acc: 95, type: "bug" },
+                    { name: "シザークロス", power: 80, acc: 100, type: "bug" },
+                    { name: "つばめがえし", power: 60, acc: 100, type: "flying" },
+                    { name: "きあいだめ", power: 0, acc: 100, type: "normal", status: "atk_up" }
+                ]
+            }
+        };
+
+        const TYPE_CHART = {
+            electric: { water: 2.0, bug: 1.0, electric: 0.5 },
+            water: { electric: 1.0, water: 0.5, bug: 1.0 },
+            bug: { water: 1.0, electric: 1.0, bug: 1.0, flying: 0.5 },
+            flying: { bug: 2.0, electric: 0.5, water: 1.0 }
+        };
+
+        const App = () => {
+            // --- State ---
+            const [gameState, setGameState] = useState('select'); 
+            const [p1, setP1] = useState(null);
+            const [p2, setP2] = useState(null);
+            const [turn, setTurn] = useState("player");
+            const [busy, setBusy] = useState(false);
+            const [over, setOver] = useState(false); // false | 'win' | 'lose' | 'caught'
+            const [logs, setLogs] = useState(["ポケモンを えらんでね！"]);
+            
+            const [activeEffect, setActiveEffect] = useState(null);
+            const [shake, setShake] = useState(0);
+            const [p1Action, setP1Action] = useState("idle"); 
+            const [p2Action, setP2Action] = useState("idle"); 
+            
+            const canvasRef = useRef(null);
+            const imagesRef = useRef({ p1: new Image(), p2: new Image() });
+            const particles = useRef([]);
+            const ballAnimRef = useRef({ active: false, progress: 0, status: 'none', shakeCount: 0 });
+
+            const addLog = (msg) => {
+                setLogs(prev => [msg, ...prev].slice(0, 20));
+            };
+
+            const triggerShake = (amount = 10) => {
+                setShake(amount);
+                setTimeout(() => setShake(0), 500);
+            };
+
+            // --- Logic ---
+            const startBattle = (p1Key, p2Key) => {
+                const char1 = POKEMON_DATA[p1Key];
+                const char2 = POKEMON_DATA[p2Key];
+                setP1({ ...char1, curHp: char1.hp, defBoost: 1, atkBoost: 1, key: p1Key });
+                setP2({ ...char2, curHp: char2.hp, defBoost: 1, atkBoost: 1, key: p2Key });
+                setGameState('battle');
+                setLogs([`ゆけっ！ ${char1.name}！`, `野生の ${char2.name}が あらわれた！`]);
+                setTurn("player");
+                setOver(false);
+                ballAnimRef.current = { active: false, progress: 0, status: 'none', shakeCount: 0 };
+            };
+
+            // 捕獲処理
+            const tryCatch = async () => {
+                if (busy || over) return;
+                setBusy(true);
+                addLog(`${p1.name}は モンスターボールを 投げた！`);
+
+                // 投げるアニメーション開始
+                ballAnimRef.current = { active: true, progress: 0, status: 'flying', shakeCount: 0 };
+                
+                await new Promise(r => setTimeout(r, 1000)); // 飛翔中
+
+                ballAnimRef.current.status = 'shaking';
+                // 捕獲率計算 (残りHPが少ないほど高い)
+                const catchChance = (1 - (p2.curHp / p2.hp)) * 0.7 + 0.15;
+                const isSuccess = Math.random() < catchChance;
+
+                // 3回揺れる演出
+                for (let i = 1; i <= 3; i++) {
+                    await new Promise(r => setTimeout(r, 700));
+                    if (!isSuccess && i === Math.floor(Math.random() * 3) + 1) {
+                        // 失敗
+                        ballAnimRef.current.active = false;
+                        addLog(`だめだ！ ${p2.name}は ボールから ぬけだした！`);
+                        triggerShake(5);
+                        setP2Action("idle");
+                        await new Promise(r => setTimeout(r, 600));
+                        setTurn("cpu");
+                        setBusy(false);
+                        return;
+                    }
+                    ballAnimRef.current.shakeCount = i;
+                }
+
+                // 成功
+                addLog(`やったー！ ${p2.name}を つかまえたぞ！`);
+                ballAnimRef.current.status = 'success';
+                setOver('caught');
+                setBusy(false);
+            };
+
+            const executeTurn = async (attackerSide, moveIndex) => {
+                if (busy || over) return;
+                setBusy(true);
+
+                const isP1 = attackerSide === "player";
+                const attacker = isP1 ? p1 : p2;
+                const defender = isP1 ? p2 : p1;
+                const setAttacker = isP1 ? setP1 : setP2;
+                const setDefender = isP1 ? setP2 : setP1;
+                const move = attacker.moves[moveIndex];
+
+                addLog(`${attacker.name}の ${move.name}！`);
+                await new Promise(r => setTimeout(r, 400));
+
+                const hit = Math.random() * 100 <= move.acc;
+
+                if (!hit) {
+                    addLog("しかし こうげきは はずれた！");
+                } else if (move.status === "def_up") {
+                    setActiveEffect({ type: 'shield', target: isP1 ? 'p1' : 'p2' });
+                    addLog(`${attacker.name}の ぼうぎょが あがった！`);
+                    setAttacker(prev => ({ ...prev, defBoost: prev.defBoost + 0.5 }));
+                    await new Promise(r => setTimeout(r, 800));
+                } else if (move.status === "atk_up") {
+                    setActiveEffect({ type: 'sparkle', target: isP1 ? 'p1' : 'p2' });
+                    addLog(`${attacker.name}は きあいを いれた！ 攻撃UP！`);
+                    setAttacker(prev => ({ ...prev, atkBoost: prev.atkBoost + 0.5 }));
+                    await new Promise(r => setTimeout(r, 800));
+                } else {
+                    setActiveEffect({ type: move.type, target: isP1 ? 'p2' : 'p1' });
+                    triggerShake(move.power > 70 ? 15 : 8);
+                    await new Promise(r => setTimeout(r, 600));
+
+                    const modifier = (TYPE_CHART[move.type]?.[defender.type] || 1.0) * (move.type === attacker.type ? 1.5 : 1.0);
+                    const damage = Math.max(1, Math.floor(((move.power * 0.3) * modifier * (0.85 + Math.random() * 0.15) * attacker.atkBoost) / defender.defBoost));
+                    
+                    if (isP1) setP2Action("hit"); else setP1Action("hit");
+                    
+                    if (modifier > 1) addLog("こうかは ばつぐんだ！");
+                    if (modifier < 1) addLog("こうかは いまひとつの ようだ...");
+
+                    setDefender(prev => {
+                        const newHp = Math.max(0, prev.curHp - damage);
+                        if (newHp <= 0) setOver(isP1 ? 'win' : 'lose');
+                        return { ...prev, curHp: newHp };
+                    });
+                    
+                    await new Promise(r => setTimeout(r, 400));
+                    setP1Action("idle"); setP2Action("idle");
+                }
+
+                setActiveEffect(null);
+                await new Promise(r => setTimeout(r, 400));
+                if (!over && (isP1 ? p2.curHp > 0 : p1.curHp > 0)) {
+                    setTurn(isP1 ? "cpu" : "player");
+                }
+                setBusy(false);
+            };
+
+            // CPU Logic
+            useEffect(() => {
+                if (gameState === 'battle' && turn === "cpu" && !busy && !over) {
+                    const timer = setTimeout(() => {
+                        const moveIdx = Math.floor(Math.random() * p2.moves.length);
+                        executeTurn("cpu", moveIdx);
+                    }, 1200);
+                    return () => clearTimeout(timer);
+                }
+            }, [turn, busy, over, gameState]);
+
+            // --- Canvas Drawing ---
+            const drawPokeball = (ctx, x, y, size, rotation, status) => {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rotation);
+                
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath(); ctx.ellipse(0, size/2, size/1.5, size/4, 0, 0, Math.PI*2); ctx.fill();
+
+                // Ball Body
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(0, 0, size/2, 0, Math.PI, false); ctx.fill();
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath(); ctx.arc(0, 0, size/2, Math.PI, Math.PI*2, false); ctx.fill();
+
+                // Outline & Line
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(0, 0, size/2, 0, Math.PI*2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-size/2, 0); ctx.lineTo(size/2, 0); ctx.stroke();
+
+                // Center button
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(0, 0, size/6, 0, Math.PI*2); ctx.fill();
+                ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, 0, size/12, 0, Math.PI*2); ctx.stroke();
+
+                if (status === 'success') {
+                    ctx.shadowBlur = 15; ctx.shadowColor = '#fbbf24'; ctx.stroke();
+                }
+                ctx.restore();
+            };
+
+            useEffect(() => {
+                if (gameState !== 'battle') return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let animationId;
+
+                const render = () => {
+                    const w = canvas.width, h = canvas.height;
+                    ctx.save();
+                    if (shake > 0) ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+
+                    // Background
+                    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+                    gradient.addColorStop(0, '#1e293b'); gradient.addColorStop(1, '#0f172a');
+                    ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h);
+                    
+                    ctx.fillStyle = '#334155';
+                    ctx.beginPath(); ctx.ellipse(w * 0.25, h * 0.8, 120, 30, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(w * 0.75, h * 0.35, 90, 20, 0, 0, Math.PI * 2); ctx.fill();
+
+                    // ポケモン描画 (ボールに入っている間は敵を隠す)
+                    const isP2Visible = !(ballAnimRef.current.active && ballAnimRef.current.status !== 'flying');
+                    const drawPoke = (img, x, y, size, action) => {
+                        ctx.save();
+                        if (action === 'hit') { ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)'; ctx.translate((Math.random()-0.5)*10, 0); }
+                        if (img.complete) ctx.drawImage(img, x, y, size, size);
+                        ctx.restore();
+                    };
+
+                    imagesRef.current.p1.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${p1.id}.png`;
+                    imagesRef.current.p2.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p2.id}.png`;
+
+                    if (isP2Visible) drawPoke(imagesRef.current.p2, w * 0.65, h * 0.05, 160, p2Action);
+                    drawPoke(imagesRef.current.p1, w * 0.1, h * 0.45, 220, p1Action);
+
+                    // モンスターボール
+                    if (ballAnimRef.current.active) {
+                        const { status, progress } = ballAnimRef.current;
+                        const startX = w * 0.25, startY = h * 0.6;
+                        const targetX = w * 0.75, targetY = h * 0.25;
+
+                        if (status === 'flying') {
+                            const p = ballAnimRef.current.progress;
+                            const curX = startX + (targetX - startX) * p;
+                            const curY = startY + (targetY - startY) * p - Math.sin(p * Math.PI) * 100;
+                            drawPokeball(ctx, curX, curY, 24, p * Math.PI * 4, 'none');
+                            ballAnimRef.current.progress = Math.min(1, p + 0.03);
+                        } else {
+                            // 揺れる演出
+                            const shakeOffset = Math.sin(Date.now() / 60) * 8;
+                            const isActuallyShaking = (Date.now() % 700 < 350);
+                            drawPokeball(ctx, targetX, targetY + 30, 24, isActuallyShaking ? shakeOffset * 0.02 : 0, status);
+                        }
+                    }
+
+                    // Effects
+                    if (activeEffect) {
+                        const tx = activeEffect.target === 'p2' ? w * 0.75 : w * 0.25;
+                        const ty = activeEffect.target === 'p2' ? h * 0.25 : h * 0.7;
+                        if (activeEffect.type === 'electric') {
+                            ctx.strokeStyle = '#ff0'; ctx.lineWidth = 3;
+                            for(let i=0; i<4; i++) {
+                                ctx.beginPath(); ctx.moveTo(tx+(Math.random()-0.5)*100, ty-200);
+                                for(let j=0; j<8; j++) ctx.lineTo(tx+(Math.random()-0.5)*80, ty-200+j*30);
+                                ctx.stroke();
+                            }
+                        }
+                        if (activeEffect.type === 'bug' || activeEffect.type === 'flying') {
+                            ctx.save(); ctx.strokeStyle = 'white'; ctx.lineWidth = 4; ctx.beginPath();
+                            ctx.moveTo(tx - 50, ty - 50); ctx.lineTo(tx + 50, ty + 50); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(tx + 50, ty - 50); ctx.lineTo(tx - 50, ty + 50); ctx.stroke(); ctx.restore();
+                        }
+                        if (activeEffect.type === 'shield') {
+                            ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 4; ctx.beginPath();
+                            ctx.arc(tx, ty, 60 + Math.sin(Date.now()/100)*5, 0, Math.PI*2); ctx.stroke();
+                        }
+                    }
+
+                    // UI HP
+                    const drawStatus = (x, y, data) => {
+                        ctx.save(); ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 3;
+                        ctx.beginPath(); ctx.roundRect(x, y, 220, 70, 12); ctx.fill(); ctx.stroke();
+                        ctx.fillStyle = '#1e293b'; ctx.font = 'bold 18px DotGothic16'; ctx.fillText(data.name, x + 15, y + 25);
+                        ctx.fillStyle = '#cbd5e1'; ctx.fillRect(x + 15, y + 40, 190, 12);
+                        const hpP = data.curHp / data.hp;
+                        ctx.fillStyle = hpP > 0.5 ? '#22c55e' : hpP > 0.2 ? '#eab308' : '#ef4444';
+                        ctx.fillRect(x + 15, y + 40, 190 * hpP, 12);
+                        ctx.fillStyle = '#64748b'; ctx.font = '12px monospace'; ctx.fillText(`${Math.ceil(data.curHp)}/${data.hp}`, x + 150, y + 65);
+                        ctx.restore();
+                    };
+                    drawStatus(30, 40, p2); drawStatus(w - 250, h - 110, p1);
+
+                    ctx.restore();
+                    animationId = requestAnimationFrame(render);
+                };
+                render();
+                return () => cancelAnimationFrame(animationId);
+            }, [gameState, p1, p2, activeEffect, shake, p1Action, p2Action]);
+
+            // --- UI Components ---
+            if (gameState === 'select') {
+                return (
+                    <div className="bg-slate-800 p-6 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel">
+                        <h1 className="text-3xl text-center mb-8 text-yellow-400 drop-shadow-md">ポケモンを えらぼう！</h1>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {Object.entries(POKEMON_DATA).map(([key, data]) => (
+                                <button 
+                                    key={key}
+                                    onClick={() => startBattle(key, ['pikachu', 'squirtle', 'scyther'].filter(k => k !== key)[Math.floor(Math.random() * 2)])}
+                                    className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center"
+                                >
+                                    <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`} className="w-32 h-32 group-hover:scale-110 transition-transform" />
+                                    <span className="text-xl mt-2">{data.name}</span>
+                                    <span className="text-xs text-slate-400 uppercase">{data.type} TYPE</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="bg-slate-800 rounded-3xl shadow-2xl overflow-hidden border-4 border-slate-600 select-none">
+                    {/* Header */}
+                    <div className="bg-slate-900 p-3 text-white flex justify-between items-center px-4 md:px-8 border-b-2 border-slate-700">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${turn==='player'?'bg-green-400 animate-pulse':'bg-slate-600'}`}></div>
+                            <span className="text-sm font-bold tracking-widest">{p1.name}</span>
+                        </div>
+                        <span className="text-xs font-mono opacity-50 italic">VS WILD {p2.name}</span>
+                    </div>
+
+                    {/* Battle Canvas */}
+                    <div className="relative bg-black overflow-hidden aspect-video">
+                        <canvas ref={canvasRef} width={640} height={360} className="w-full h-full object-contain" />
+                        {over && (
+                            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white p-4 animate-in fade-in duration-500">
+                                <h2 className="text-5xl font-black mb-6 font-pixel text-yellow-400 italic text-center">
+                                    {over === 'win' ? "勝利！" : over === 'caught' ? "つかまえた！" : "敗北..."}
+                                </h2>
+                                <button onClick={() => setGameState('select')} className="bg-white text-slate-900 px-10 py-3 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel">
+                                    タイトルへ
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Log Display */}
+                    <div className="bg-slate-900 p-4 border-t-4 border-slate-700 h-32 md:h-40 font-pixel overflow-y-auto log-container flex flex-col-reverse shadow-inner">
+                        <div>
+                            {logs.map((log, i) => (
+                                <div key={i} className={`mb-1 transition-all ${i === 0 ? "text-white text-xl md:text-2xl border-l-4 border-yellow-500 pl-3" : "text-slate-500 text-sm pl-4"}`}>
+                                    {log}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-t-4 border-slate-700 bg-slate-800">
+                        {/* Move Set */}
+                        <div className="grid grid-cols-2 gap-2 p-3 md:p-4 bg-slate-900/50 border-r-0 md:border-r-4 border-slate-700">
+                            {p1.moves.map((move, idx) => (
+                                <button 
+                                    key={move.name} 
+                                    onClick={() => executeTurn("player", idx)} 
+                                    disabled={turn !== "player" || busy || over} 
+                                    className={`p-3 md:p-4 text-xs md:text-sm font-bold rounded-xl border-2 transition-all pixel-border ${turn === "player" && !busy && !over ? "bg-slate-700 text-white border-slate-500 hover:border-yellow-400 active:translate-y-1" : "bg-slate-800 text-slate-600 border-transparent opacity-50"}`}
+                                >
+                                    {move.name}
+                                </button>
+                            ))}
+                        </div>
+                        {/* Sub Options */}
+                        <div className="grid grid-cols-2 p-3 md:p-4 gap-2 md:gap-3 bg-slate-800">
+                            <button 
+                                onClick={tryCatch}
+                                disabled={turn !== "player" || busy || over}
+                                className={`col-span-2 p-2 md:p-3 font-bold rounded-xl border-2 transition-all font-pixel text-sm shadow-lg ${turn === 'player' && !busy && !over ? 'bg-red-600 text-white border-red-400 hover:bg-red-500 active:translate-y-1' : 'bg-slate-800 text-slate-600 border-transparent opacity-50'}`}
+                            >
+                                モンスターボール
+                            </button>
+                            <button onClick={() => setGameState('select')} className="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-white border-2 border-slate-600 p-2 text-xs font-bold rounded-xl transition-all">にげる</button>
+                            <div className="flex items-center justify-center bg-slate-900/40 rounded-xl border border-slate-700">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{turn === "player" ? "Your Turn" : "CPU..."}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
