@@ -50,7 +50,7 @@ const POKEMON_DATA = {
   },
   black_rayquaza: {
     id: 384,
-    name: "ブラックレックウザ",
+    name: "レックウザ",
     type: "dragon",
     hp: 160,
     color: "#1e293b",
