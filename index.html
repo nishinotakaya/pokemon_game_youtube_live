@@ -103,11 +103,46 @@
 
             const canvasRef = useRef(null);
             const imagesRef = useRef({ p1: new Image(), p2: new Image() });
+            const basagiriImageRef = useRef(null);
             const particles = useRef([]);
             const ballAnimRef = useRef({ active: false, progress: 0, status: 'none', shakeCount: 0 });
             const beamProgressRef = useRef(0);
             const audioRef = useRef(null);
             const audioContextRef = useRef(null);
+
+            // バサギリの画像を読み込む（背景透過処理付き）
+            useEffect(() => {
+                if (!basagiriImageRef.current) {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => {
+                        // 背景透過処理
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const data = imageData.data;
+
+                        // 白い背景を透過させる
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            // 白に近い色（閾値調整可能）を透過させる
+                            if (r > 240 && g > 240 && b > 240) {
+                                data[i + 3] = 0; // アルファチャンネルを0に
+                            }
+                        }
+
+                        ctx.putImageData(imageData, 0, 0);
+                        basagiriImageRef.current = canvas;
+                    };
+                    img.src = 'バサギリ.jpg';
+                }
+            }, []);
 
             const addLog = (msg) => {
                 setLogs(prev => [msg, ...prev].slice(0, 20));
@@ -365,9 +400,18 @@
                         ctx.restore();
                     };
 
-                    // バサギリ（ID 900）の場合は後ろ姿がないので正面のスプライトを使用
+                    const drawBasagiri = (x, y, size, action) => {
+                        ctx.save();
+                        if (action === 'hit') { ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)'; ctx.translate((Math.random() - 0.5) * 10, 0); }
+                        if (basagiriImageRef.current) {
+                            ctx.drawImage(basagiriImageRef.current, x, y, size, size);
+                        }
+                        ctx.restore();
+                    };
+
+                    // バサギリ（ID 900）の場合はカスタム画像を使用
                     if (p1.key === 'scyther_alt') {
-                        imagesRef.current.p1.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p1.id}.png`;
+                        // バサギリのカスタム画像を使用（既に読み込まれている）
                     } else {
                         imagesRef.current.p1.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${p1.id}.png`;
                     }
@@ -379,7 +423,13 @@
                     const p1X = p1.key === 'rayquaza' ? w * 0.05 : w * 0.1;
                     const p1Y = p1.key === 'rayquaza' ? h * 0.4 : h * 0.45;
                     const p1Size = p1.key === 'rayquaza' ? 200 : 220;
-                    drawPoke(imagesRef.current.p1, p1X, p1Y, p1Size, p1Action);
+
+                    // バサギリの場合はカスタム画像を描画
+                    if (p1.key === 'scyther_alt') {
+                        drawBasagiri(p1X, p1Y, p1Size, p1Action);
+                    } else {
+                        drawPoke(imagesRef.current.p1, p1X, p1Y, p1Size, p1Action);
+                    }
 
                     if (ballAnimRef.current.active) {
                         const { status, progress } = ballAnimRef.current;
