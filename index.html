@@ -543,20 +543,58 @@
                     const drawStatus = (x, y, data) => {
                         ctx.save(); ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 3;
                         ctx.beginPath(); ctx.roundRect(x, y, 220, 70, 12); ctx.fill(); ctx.stroke();
-                        ctx.fillStyle = '#1e293b'; ctx.font = 'bold 18px DotGothic16'; ctx.fillText(data.name, x + 15, y + 25);
+
+                        // ポケモン名の表示
+                        ctx.fillStyle = '#1e293b'; ctx.font = 'bold 18px DotGothic16';
+                        const nameText = data.name;
+                        ctx.fillText(nameText, x + 15, y + 25);
+
+                        // どく状態の表示（名前の隣にラベルで表示）
+                        if (data.poisoned) {
+                            const nameWidth = ctx.measureText(nameText).width;
+                            const poisonX = x + 15 + nameWidth + 10;
+                            const poisonY = y + 25;
+                            const labelPadding = 8;
+                            const labelHeight = 22;
+                            const labelMarginTop = 4; // 上に4pxの余白
+
+                            // 「どく」の文字幅を測定
+                            ctx.font = 'bold 14px DotGothic16';
+                            const poisonText = 'どく';
+                            const textWidth = ctx.measureText(poisonText).width;
+                            const labelWidth = textWidth + labelPadding * 2;
+                            const labelY = poisonY - labelHeight + labelMarginTop;
+
+                            // 角丸のラベル背景
+                            ctx.fillStyle = '#a855f7';
+                            ctx.beginPath();
+                            ctx.roundRect(poisonX, labelY, labelWidth, labelHeight, 6);
+                            ctx.fill();
+
+                            // 白い枠線
+                            ctx.strokeStyle = '#ffffff';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.roundRect(poisonX, labelY, labelWidth, labelHeight, 6);
+                            ctx.stroke();
+
+                            // 「どく」の文字
+                            ctx.fillStyle = '#ffffff';
+                            ctx.font = 'bold 14px DotGothic16';
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(poisonText, poisonX + labelPadding, labelY + labelHeight / 2);
+                            ctx.textBaseline = 'alphabetic';
+                        }
+
                         ctx.fillStyle = '#cbd5e1'; ctx.fillRect(x + 15, y + 40, 190, 12);
                         const hpP = data.curHp / data.hp;
                         ctx.fillStyle = hpP > 0.5 ? '#22c55e' : hpP > 0.2 ? '#eab308' : '#ef4444';
                         ctx.fillRect(x + 15, y + 40, 190 * hpP, 12);
-                        // HP表示と状態異常表示
+                        // HP表示
                         ctx.fillStyle = '#64748b'; ctx.font = '12px monospace';
                         const hpText = `${Math.ceil(data.curHp)}/${data.hp}`;
                         ctx.fillText(hpText, x + 15, y + 65);
-                        // どく状態の表示
-                        if (data.poisoned) {
-                            ctx.fillStyle = '#a855f7'; ctx.font = 'bold 11px DotGothic16';
-                            ctx.fillText('どく', x + 15 + ctx.measureText(hpText).width + 8, y + 65);
-                        }
                         ctx.restore();
                     };
                     drawStatus(30, 40, p2); drawStatus(w - 250, h - 110, p1);
