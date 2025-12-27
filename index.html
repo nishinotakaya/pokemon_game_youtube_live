@@ -419,10 +419,10 @@
                     imagesRef.current.p2.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p2.id}.png`;
 
                     if (isP2Visible) drawPoke(imagesRef.current.p2, w * 0.65, h * 0.05, 160, p2Action);
-                    // レックウザなど大きいポケモンは位置を調整（左前）
-                    const p1X = p1.key === 'rayquaza' ? w * 0.05 : w * 0.1;
-                    const p1Y = p1.key === 'rayquaza' ? h * 0.4 : h * 0.45;
-                    const p1Size = p1.key === 'rayquaza' ? 200 : 220;
+                    // すべてのプレイヤーポケモンを左上に配置（レックウザと同じ位置）
+                    const p1X = w * 0.05;
+                    const p1Y = h * 0.4;
+                    const p1Size = 220;
 
                     // バサギリの場合はカスタム画像を描画
                     if (p1.key === 'scyther_alt') {
