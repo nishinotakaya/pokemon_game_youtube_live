@@ -36,18 +36,27 @@ const MOVES_DATA = {
   "かえんほうしゃ": { power: 90, acc: 100, type: "fire" },
   "はかいこうせん": { power: 150, acc: 90, type: "fire", effect: "beam" },
   "ほのおのうず": { power: 100, acc: 85, type: "fire" },
-  "そらをとぶ": { power: 90, acc: 95, type: "flying" }
+  "そらをとぶ": { power: 90, acc: 95, type: "flying" },
+
+  // ルカリオの技
+  "シャドーボール": { power: 120, acc: 100, type: "ghost", effect: "shadow_ball" },
+  "はどうだん": { power: 110, acc: 95, type: "fighting" },
+  "きんせつパンチ": { power: 100, acc: 100, type: "fighting" },
+  "ドレインパンチ": { power: 95, acc: 100, type: "fighting" }
 };
 
 // タイプ相性チャート
 const TYPE_CHART = {
-  electric: { water: 2.0, bug: 1.0, electric: 0.5, steel: 0.5, dragon: 1.0, fire: 1.0, flying: 0.5 },
-  water: { electric: 1.0, water: 0.5, bug: 1.0, steel: 1.0, dragon: 1.0, fire: 2.0, flying: 1.0 },
-  bug: { water: 1.0, electric: 1.0, bug: 1.0, flying: 0.5, steel: 0.5, dragon: 1.0, fire: 0.5 },
-  flying: { bug: 2.0, electric: 0.5, water: 1.0, steel: 0.5, dragon: 1.0, fire: 1.0 },
-  steel: { electric: 0.5, water: 0.5, bug: 1.0, flying: 1.0, steel: 0.5, dragon: 1.0, fire: 0.5 },
-  dragon: { electric: 1.0, water: 1.0, bug: 1.0, flying: 1.0, steel: 0.5, dragon: 2.0, fire: 1.0 },
-  fire: { electric: 1.0, water: 0.5, bug: 2.0, flying: 1.0, steel: 2.0, dragon: 0.5, fire: 0.5 },
-  normal: { electric: 1.0, water: 1.0, bug: 1.0, flying: 1.0, steel: 0.5, dragon: 1.0, fire: 1.0 }
+  electric: { water: 2.0, bug: 1.0, electric: 0.5, steel: 0.5, dragon: 1.0, fire: 1.0, flying: 0.5, fighting: 1.0, ghost: 1.0, psychic: 1.0 },
+  water: { electric: 1.0, water: 0.5, bug: 1.0, steel: 1.0, dragon: 1.0, fire: 2.0, flying: 1.0, fighting: 1.0, ghost: 1.0, psychic: 1.0 },
+  bug: { water: 1.0, electric: 1.0, bug: 1.0, flying: 0.5, steel: 0.5, dragon: 1.0, fire: 0.5, fighting: 0.5, ghost: 0.5, psychic: 2.0 },
+  flying: { bug: 2.0, electric: 0.5, water: 1.0, steel: 0.5, dragon: 1.0, fire: 1.0, fighting: 2.0, ghost: 1.0, psychic: 1.0 },
+  steel: { electric: 0.5, water: 0.5, bug: 1.0, flying: 1.0, steel: 0.5, dragon: 1.0, fire: 0.5, fighting: 2.0, ghost: 1.0, psychic: 0.5 },
+  dragon: { electric: 1.0, water: 1.0, bug: 1.0, flying: 1.0, steel: 0.5, dragon: 2.0, fire: 1.0, fighting: 1.0, ghost: 1.0, psychic: 1.0 },
+  fire: { electric: 1.0, water: 0.5, bug: 2.0, flying: 1.0, steel: 2.0, dragon: 0.5, fire: 0.5, fighting: 1.0, ghost: 1.0, psychic: 1.0 },
+  normal: { electric: 1.0, water: 1.0, bug: 1.0, flying: 1.0, steel: 0.5, dragon: 1.0, fire: 1.0, fighting: 2.0, ghost: 0, psychic: 1.0 },
+  fighting: { electric: 1.0, water: 1.0, bug: 0.5, flying: 0.5, steel: 1.0, dragon: 1.0, fire: 1.0, fighting: 1.0, ghost: 0, psychic: 0.5 },
+  ghost: { electric: 1.0, water: 1.0, bug: 0.5, flying: 1.0, steel: 1.0, dragon: 1.0, fire: 1.0, fighting: 0, ghost: 2.0, psychic: 2.0 },
+  psychic: { electric: 1.0, water: 1.0, bug: 2.0, flying: 1.0, steel: 0.5, dragon: 1.0, fire: 1.0, fighting: 2.0, ghost: 2.0, psychic: 0.5 }
 };
 

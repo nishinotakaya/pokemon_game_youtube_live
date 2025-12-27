@@ -246,6 +246,31 @@
                             await new Promise(r => setTimeout(r, 30));
                         }
                         await new Promise(r => setTimeout(r, 300));
+                    } else if (move.effect === "shadow_ball") {
+                        // シャドーボールエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'shadow_ball',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        // シャドーボールアニメーション（進行を更新）
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'shadow_ball') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
                     } else {
                         setActiveEffect({ type: move.type, target: isP1 ? 'p2' : 'p1' });
                     }
@@ -377,7 +402,9 @@
                     if (activeEffect) {
                         const tx = activeEffect.target === 'p2' ? w * 0.75 : w * 0.25;
                         const ty = activeEffect.target === 'p2' ? h * 0.25 : h * 0.7;
-                        drawEffect(ctx, activeEffect, tx, ty, w, h);
+                        if (window.drawEffect) {
+                            window.drawEffect(ctx, activeEffect, tx, ty, w, h);
+                        }
                     }
 
                     const drawStatus = (x, y, data) => {
