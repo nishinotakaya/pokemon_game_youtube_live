@@ -1,4 +1,5 @@
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,16 +11,39 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <!-- Babel standalone -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- データファイル -->
+    <script src="data/pokemon.js"></script>
+    <script src="data/moves.js"></script>
+    <script src="effects/effects.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
-        .font-pixel { font-family: 'DotGothic16', sans-serif; }
-        canvas { image-rendering: pixelated; }
-        .log-container::-webkit-scrollbar { width: 4px; }
-        .log-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
-        body { background-color: #0f172a; overflow-x: hidden; }
+
+        .font-pixel {
+            font-family: 'DotGothic16', sans-serif;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 10px;
+        }
+
+        body {
+            background-color: #0f172a;
+            overflow-x: hidden;
+        }
+
         .pixel-border {
             box-shadow: 0 4px 0 0 #1e293b;
         }
+
         /* BGM用iframeを隠す */
         .bgm-player {
             position: absolute;
@@ -30,67 +54,60 @@
         }
     </style>
 </head>
+
 <body class="min-h-screen flex items-center justify-center p-2 md:p-4">
     <div id="root" class="w-full max-w-2xl"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useCallback } = React;
 
-        // --- Data Definitions ---
-        const POKEMON_DATA = {
-            pikachu: { id: 25, name: "ピカチュウ", type: "electric", hp: 100, color: "#facc15", 
-                moves: [
-                    { name: "でんきショック", power: 40, acc: 100, type: "electric" },
-                    { name: "アイアンテール", power: 100, acc: 75, type: "steel" },
-                    { name: "でんこうせっか", power: 40, acc: 100, type: "normal" },
-                    { name: "10まんボルト", power: 90, acc: 100, type: "electric" }
-                ]
-            },
-            squirtle: { id: 7, name: "ゼニガメ", type: "water", hp: 120, color: "#60a5fa",
-                moves: [
-                    { name: "みずてっぽう", power: 40, acc: 100, type: "water" },
-                    { name: "メガトンパンチ", power: 80, acc: 85, type: "normal" },
-                    { name: "たいあたり", power: 40, acc: 100, type: "normal" },
-                    { name: "からにこもる", power: 0, acc: 100, type: "water", status: "def_up" }
-                ]
-            },
-            scyther: { id: 123, name: "ストライク", type: "bug", hp: 110, color: "#4ade80",
-                moves: [
-                    { name: "れんぞくぎり", power: 40, acc: 95, type: "bug" },
-                    { name: "シザークロス", power: 80, acc: 100, type: "bug" },
-                    { name: "つばめがえし", power: 60, acc: 100, type: "flying" },
-                    { name: "きあいだめ", power: 0, acc: 100, type: "normal", status: "atk_up" }
-                ]
+        // ポケモンデータと技データを統合して使用可能な形式に変換
+        const getPokemonWithMoves = (pokemonKey) => {
+            const pokemon = POKEMON_DATA[pokemonKey];
+            if (!pokemon) {
+                console.error('ポケモンが見つかりません:', pokemonKey);
+                return null;
             }
-        };
 
-        const TYPE_CHART = {
-            electric: { water: 2.0, bug: 1.0, electric: 0.5 },
-            water: { electric: 1.0, water: 0.5, bug: 1.0 },
-            bug: { water: 1.0, electric: 1.0, bug: 1.0, flying: 0.5 },
-            flying: { bug: 2.0, electric: 0.5, water: 1.0 }
+            const moves = pokemon.moves.map(moveName => {
+                const moveData = MOVES_DATA[moveName];
+                if (!moveData) {
+                    console.error('技データが見つかりません:', moveName, 'ポケモン:', pokemonKey);
+                }
+                return { name: moveName, ...moveData };
+            }).filter(move => move.power !== undefined); // 技データが見つからないものを除外
+
+            if (moves.length === 0) {
+                console.error('有効な技が見つかりません:', pokemonKey);
+                return null;
+            }
+
+            return { ...pokemon, moves };
         };
 
         const App = () => {
             // --- State ---
-            const [gameState, setGameState] = useState('select'); 
+            const [gameState, setGameState] = useState('select');
             const [p1, setP1] = useState(null);
             const [p2, setP2] = useState(null);
             const [turn, setTurn] = useState("player");
             const [busy, setBusy] = useState(false);
-            const [over, setOver] = useState(false); 
+            const [over, setOver] = useState(false);
             const [logs, setLogs] = useState(["ポケモンを えらんでね！"]);
             const [bgmActive, setBgmActive] = useState(false);
-            
+
             const [activeEffect, setActiveEffect] = useState(null);
             const [shake, setShake] = useState(0);
-            const [p1Action, setP1Action] = useState("idle"); 
-            const [p2Action, setP2Action] = useState("idle"); 
-            
+            const [p1Action, setP1Action] = useState("idle");
+            const [p2Action, setP2Action] = useState("idle");
+
             const canvasRef = useRef(null);
             const imagesRef = useRef({ p1: new Image(), p2: new Image() });
             const particles = useRef([]);
             const ballAnimRef = useRef({ active: false, progress: 0, status: 'none', shakeCount: 0 });
+            const beamProgressRef = useRef(0);
+            const audioRef = useRef(null);
+            const audioContextRef = useRef(null);
 
             const addLog = (msg) => {
                 setLogs(prev => [msg, ...prev].slice(0, 20));
@@ -101,10 +118,35 @@
                 setTimeout(() => setShake(0), 500);
             };
 
+            // 音声を開始する（ユーザーインタラクション後に呼び出す）
+            const startAudio = () => {
+                // Web Audio APIのコンテキストを開始（スマホ対応）
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!audioContextRef.current) {
+                        audioContextRef.current = new AudioContext();
+                    }
+                    // サスペンドされている場合は再開
+                    if (audioContextRef.current.state === 'suspended') {
+                        audioContextRef.current.resume();
+                    }
+                } catch (e) {
+                    console.log('AudioContext not supported');
+                }
+            };
+
             // --- Logic ---
             const startBattle = (p1Key, p2Key) => {
-                const char1 = POKEMON_DATA[p1Key];
-                const char2 = POKEMON_DATA[p2Key];
+                const char1 = getPokemonWithMoves(p1Key);
+                const char2 = getPokemonWithMoves(p2Key);
+                if (!char1 || !char2) {
+                    console.error('ポケモンデータが見つかりません:', { p1Key, p2Key, char1, char2 });
+                    return;
+                }
+
+                // 音声を開始（ユーザーインタラクション後なので可能）
+                startAudio();
+
                 setP1({ ...char1, curHp: char1.hp, defBoost: 1, atkBoost: 1, key: p1Key });
                 setP2({ ...char2, curHp: char2.hp, defBoost: 1, atkBoost: 1, key: p2Key });
                 setGameState('battle');
@@ -113,6 +155,7 @@
                 setTurn("player");
                 setOver(false);
                 ballAnimRef.current = { active: false, progress: 0, status: 'none', shakeCount: 0 };
+                beamProgressRef.current = 0;
             };
 
             const tryCatch = async () => {
@@ -122,7 +165,7 @@
                 addLog(`${p1.name}は モンスターボールを 投げた！`);
 
                 ballAnimRef.current = { active: true, progress: 0, status: 'flying', shakeCount: 0 };
-                await new Promise(r => setTimeout(r, 1000)); 
+                await new Promise(r => setTimeout(r, 1000));
 
                 ballAnimRef.current.status = 'shaking';
                 const catchChance = (1 - (p2.curHp / p2.hp)) * 0.7 + 0.15;
@@ -152,7 +195,7 @@
             const executeTurn = async (attackerSide, moveIndex) => {
                 if (busy || over) return;
                 setBusy(true);
-                setBgmActive(true); 
+                setBgmActive(true);
 
                 const isP1 = attackerSide === "player";
                 const attacker = isP1 ? p1 : p2;
@@ -179,15 +222,41 @@
                     setAttacker(prev => ({ ...prev, atkBoost: prev.atkBoost + 0.5 }));
                     await new Promise(r => setTimeout(r, 800));
                 } else {
-                    setActiveEffect({ type: move.type, target: isP1 ? 'p2' : 'p1' });
+                    // ビームエフェクトの場合は特別な処理
+                    if (move.effect === "beam") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        beamProgressRef.current = 0;
+                        setActiveEffect({
+                            type: 'beam',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        // ビームアニメーション（進行を更新）
+                        for (let p = 0; p <= 1; p += 0.05) {
+                            beamProgressRef.current = p;
+                            setActiveEffect(prev => prev ? { ...prev, progress: p } : null);
+                            await new Promise(r => setTimeout(r, 30));
+                        }
+                        await new Promise(r => setTimeout(r, 300));
+                    } else {
+                        setActiveEffect({ type: move.type, target: isP1 ? 'p2' : 'p1' });
+                    }
                     triggerShake(move.power > 70 ? 15 : 8);
                     await new Promise(r => setTimeout(r, 600));
 
                     const modifier = (TYPE_CHART[move.type]?.[defender.type] || 1.0) * (move.type === attacker.type ? 1.5 : 1.0);
                     const damage = Math.max(1, Math.floor(((move.power * 0.3) * modifier * (0.85 + Math.random() * 0.15) * attacker.atkBoost) / defender.defBoost));
-                    
+
                     if (isP1) setP2Action("hit"); else setP1Action("hit");
-                    
+
                     if (modifier > 1) addLog("こうかは ばつぐんだ！");
                     if (modifier < 1) addLog("こうかは いまひとつの ようだ...");
 
@@ -196,7 +265,7 @@
                         if (newHp <= 0) setOver(isP1 ? 'win' : 'lose');
                         return { ...prev, curHp: newHp };
                     });
-                    
+
                     await new Promise(r => setTimeout(r, 400));
                     setP1Action("idle"); setP2Action("idle");
                 }
@@ -226,18 +295,18 @@
                 ctx.translate(x, y);
                 ctx.rotate(rotation);
                 ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                ctx.beginPath(); ctx.ellipse(0, size/2, size/1.5, size/4, 0, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(0, size / 2, size / 1.5, size / 4, 0, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = '#fff';
-                ctx.beginPath(); ctx.arc(0, 0, size/2, 0, Math.PI, false); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, size / 2, 0, Math.PI, false); ctx.fill();
                 ctx.fillStyle = '#ef4444';
-                ctx.beginPath(); ctx.arc(0, 0, size/2, Math.PI, Math.PI*2, false); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, size / 2, Math.PI, Math.PI * 2, false); ctx.fill();
                 ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(0, 0, size/2, 0, Math.PI*2); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(-size/2, 0); ctx.lineTo(size/2, 0); ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, 0, size / 2, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-size / 2, 0); ctx.lineTo(size / 2, 0); ctx.stroke();
                 ctx.fillStyle = '#fff';
-                ctx.beginPath(); ctx.arc(0, 0, size/6, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, size / 6, 0, Math.PI * 2); ctx.fill();
                 ctx.stroke();
-                ctx.beginPath(); ctx.arc(0, 0, size/12, 0, Math.PI*2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, 0, size / 12, 0, Math.PI * 2); ctx.stroke();
                 if (status === 'success') {
                     ctx.shadowBlur = 15; ctx.shadowColor = '#fbbf24'; ctx.stroke();
                 }
@@ -253,12 +322,12 @@
                 const render = () => {
                     const w = canvas.width, h = canvas.height;
                     ctx.save();
-                    if (shake > 0) ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+                    if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
 
                     const gradient = ctx.createLinearGradient(0, 0, 0, h);
                     gradient.addColorStop(0, '#1e293b'); gradient.addColorStop(1, '#0f172a');
                     ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h);
-                    
+
                     ctx.fillStyle = '#334155';
                     ctx.beginPath(); ctx.ellipse(w * 0.25, h * 0.8, 120, 30, 0, 0, Math.PI * 2); ctx.fill();
                     ctx.beginPath(); ctx.ellipse(w * 0.75, h * 0.35, 90, 20, 0, 0, Math.PI * 2); ctx.fill();
@@ -266,16 +335,26 @@
                     const isP2Visible = !(ballAnimRef.current.active && ballAnimRef.current.status !== 'flying');
                     const drawPoke = (img, x, y, size, action) => {
                         ctx.save();
-                        if (action === 'hit') { ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)'; ctx.translate((Math.random()-0.5)*10, 0); }
-                        if (img.complete) ctx.drawImage(img, x, y, size, size);
+                        if (action === 'hit') { ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)'; ctx.translate((Math.random() - 0.5) * 10, 0); }
+                        if (img.complete && img.naturalWidth > 0) ctx.drawImage(img, x, y, size, size);
                         ctx.restore();
                     };
 
-                    imagesRef.current.p1.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${p1.id}.png`;
+                    // バサギリ（ID 900）の場合は後ろ姿がないので正面のスプライトを使用
+                    if (p1.key === 'scyther_alt') {
+                        imagesRef.current.p1.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p1.id}.png`;
+                    } else {
+                        imagesRef.current.p1.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${p1.id}.png`;
+                    }
+
                     imagesRef.current.p2.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p2.id}.png`;
 
                     if (isP2Visible) drawPoke(imagesRef.current.p2, w * 0.65, h * 0.05, 160, p2Action);
-                    drawPoke(imagesRef.current.p1, w * 0.1, h * 0.45, 220, p1Action);
+                    // レックウザなど大きいポケモンは位置を調整（左前）
+                    const p1X = p1.key === 'rayquaza' ? w * 0.05 : w * 0.1;
+                    const p1Y = p1.key === 'rayquaza' ? h * 0.4 : h * 0.45;
+                    const p1Size = p1.key === 'rayquaza' ? 200 : 220;
+                    drawPoke(imagesRef.current.p1, p1X, p1Y, p1Size, p1Action);
 
                     if (ballAnimRef.current.active) {
                         const { status, progress } = ballAnimRef.current;
@@ -298,23 +377,7 @@
                     if (activeEffect) {
                         const tx = activeEffect.target === 'p2' ? w * 0.75 : w * 0.25;
                         const ty = activeEffect.target === 'p2' ? h * 0.25 : h * 0.7;
-                        if (activeEffect.type === 'electric') {
-                            ctx.strokeStyle = '#ff0'; ctx.lineWidth = 3;
-                            for(let i=0; i<4; i++) {
-                                ctx.beginPath(); ctx.moveTo(tx+(Math.random()-0.5)*100, ty-200);
-                                for(let j=0; j<8; j++) ctx.lineTo(tx+(Math.random()-0.5)*80, ty-200+j*30);
-                                ctx.stroke();
-                            }
-                        }
-                        if (activeEffect.type === 'bug' || activeEffect.type === 'flying') {
-                            ctx.save(); ctx.strokeStyle = 'white'; ctx.lineWidth = 4; ctx.beginPath();
-                            ctx.moveTo(tx - 50, ty - 50); ctx.lineTo(tx + 50, ty + 50); ctx.stroke();
-                            ctx.beginPath(); ctx.moveTo(tx + 50, ty - 50); ctx.lineTo(tx - 50, ty + 50); ctx.stroke(); ctx.restore();
-                        }
-                        if (activeEffect.type === 'shield') {
-                            ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 4; ctx.beginPath();
-                            ctx.arc(tx, ty, 60 + Math.sin(Date.now()/100)*5, 0, Math.PI*2); ctx.stroke();
-                        }
+                        drawEffect(ctx, activeEffect, tx, ty, w, h);
                     }
 
                     const drawStatus = (x, y, data) => {
@@ -342,11 +405,15 @@
                 return (
                     <div className="bg-slate-800 p-6 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel">
                         <h1 className="text-3xl text-center mb-8 text-yellow-400 drop-shadow-md">ポケモンを えらぼう！</h1>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {Object.entries(POKEMON_DATA).map(([key, data]) => (
-                                <button 
+                                <button
                                     key={key}
-                                    onClick={() => startBattle(key, ['pikachu', 'squirtle', 'scyther'].filter(k => k !== key)[Math.floor(Math.random() * 2)])}
+                                    onClick={() => {
+                                        const allKeys = Object.keys(POKEMON_DATA).filter(k => k !== key);
+                                        const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
+                                        startBattle(key, randomKey);
+                                    }}
                                     className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center"
                                 >
                                     <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`} className="w-32 h-32 group-hover:scale-110 transition-transform" />
@@ -361,19 +428,24 @@
 
             return (
                 <div className="bg-slate-800 rounded-3xl shadow-2xl overflow-hidden border-4 border-slate-600 select-none">
-                    {/* BGM Player (Hidden IFrame) */}
+                    {/* BGM Player (YouTube IFrame - ユーザーインタラクション後に表示) */}
                     {bgmActive && (
-                        <iframe 
+                        <iframe
                             className="bgm-player"
-                            src="https://www.youtube.com/embed/Q53CDIGPJ58?start=407&end=492&autoplay=1&loop=1&playlist=Q53CDIGPJ58" 
-                            allow="autoplay"
+                            src="https://www.youtube.com/embed/Q53CDIGPJ58?start=407&end=492&autoplay=1&loop=1&playlist=Q53CDIGPJ58&enablejsapi=1"
+                            allow="autoplay; encrypted-media"
+                            allowFullScreen={false}
+                            onLoad={() => {
+                                // iframeが読み込まれた後に音声コンテキストを開始
+                                startAudio();
+                            }}
                         ></iframe>
                     )}
 
                     {/* Header */}
                     <div className="bg-slate-900 p-3 text-white flex justify-between items-center px-4 md:px-8 border-b-2 border-slate-700">
                         <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${turn==='player'?'bg-green-400 animate-pulse':'bg-slate-600'}`}></div>
+                            <div className={`w-3 h-3 rounded-full ${turn === 'player' ? 'bg-green-400 animate-pulse' : 'bg-slate-600'}`}></div>
                             <span className="text-sm font-bold tracking-widest">{p1.name}</span>
                         </div>
                         <span className="text-xs font-mono opacity-50 italic">VS WILD {p2.name}</span>
@@ -410,10 +482,10 @@
                         {/* Move Set */}
                         <div className="grid grid-cols-2 gap-2 p-3 md:p-4 bg-slate-900/50 border-r-0 md:border-r-4 border-slate-700">
                             {p1.moves.map((move, idx) => (
-                                <button 
-                                    key={move.name} 
-                                    onClick={() => executeTurn("player", idx)} 
-                                    disabled={turn !== "player" || busy || over} 
+                                <button
+                                    key={move.name}
+                                    onClick={() => executeTurn("player", idx)}
+                                    disabled={turn !== "player" || busy || over}
                                     className={`p-3 md:p-4 text-xs md:text-sm font-bold rounded-xl border-2 transition-all pixel-border ${turn === "player" && !busy && !over ? "bg-slate-700 text-white border-slate-500 hover:border-yellow-400 active:translate-y-1" : "bg-slate-800 text-slate-600 border-transparent opacity-50"}`}
                                 >
                                     {move.name}
@@ -422,7 +494,7 @@
                         </div>
                         {/* Sub Options */}
                         <div className="grid grid-cols-2 p-3 md:p-4 gap-2 md:gap-3 bg-slate-800">
-                            <button 
+                            <button
                                 onClick={tryCatch}
                                 disabled={turn !== "player" || busy || over}
                                 className={`col-span-2 p-2 md:p-3 font-bold rounded-xl border-2 transition-all font-pixel text-sm shadow-lg ${turn === 'player' && !busy && !over ? 'bg-red-600 text-white border-red-400 hover:bg-red-500 active:translate-y-1' : 'bg-slate-800 text-slate-600 border-transparent opacity-50'}`}
