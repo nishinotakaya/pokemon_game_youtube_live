@@ -804,12 +804,34 @@
                                 ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
                                 ctx.translate((Math.random() - 0.5) * 10, 0);
                             }
+
+                            // ピカピカエフェクト（光る効果）
+                            const time = Date.now();
+                            const sparkleIntensity = 0.3 + Math.sin(time * 0.01) * 0.2; // 0.1〜0.5の間で変化
+                            ctx.shadowBlur = 30;
+                            ctx.shadowColor = `rgba(59, 130, 246, ${sparkleIntensity})`; // 青い光
+
                             // そのまま描画（回転なし、元のサイズのまま）
                             if (megaLucarioBackImageRef.current instanceof HTMLCanvasElement) {
                                 ctx.drawImage(megaLucarioBackImageRef.current, p1X, p1Y, p1Size, p1Size);
                             } else if (megaLucarioBackImageRef.current.complete && megaLucarioBackImageRef.current.naturalWidth > 0) {
                                 ctx.drawImage(megaLucarioBackImageRef.current, p1X, p1Y, p1Size, p1Size);
                             }
+
+                            // 追加の光るエフェクト（複数の光の点）
+                            ctx.shadowBlur = 20;
+                            ctx.shadowColor = `rgba(255, 255, 255, ${sparkleIntensity * 0.5})`;
+                            for (let i = 0; i < 5; i++) {
+                                const angle = (time * 0.002 + i * Math.PI * 2 / 5) % (Math.PI * 2);
+                                const radius = p1Size * 0.4;
+                                const sparkleX = p1X + p1Size / 2 + Math.cos(angle) * radius;
+                                const sparkleY = p1Y + p1Size / 2 + Math.sin(angle) * radius;
+                                ctx.fillStyle = `rgba(255, 255, 255, ${sparkleIntensity})`;
+                                ctx.beginPath();
+                                ctx.arc(sparkleX, sparkleY, 3, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+
                             ctx.restore();
                         } else {
                             let p1Image = imagesRef.current.p1;
