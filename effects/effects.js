@@ -321,6 +321,238 @@ window.drawEffect = function (ctx, effect, targetX, targetY, width, height) {
       ctx.restore();
       break;
 
+    case 'eternal_storm':
+      // ムゲンストームのエフェクト - 強力なドラゴンの嵐
+      ctx.save();
+      // 嵐の渦巻き
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + time / 150;
+        const radius = 60 + Math.sin(time / 80 + i) * 20;
+        const x = targetX + Math.cos(angle) * radius;
+        const y = targetY + Math.sin(angle) * radius;
+
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, 30);
+        gradient.addColorStop(0, `rgba(168, 85, 247, ${0.9 + Math.sin(time / 60 + i) * 0.1})`);
+        gradient.addColorStop(1, 'rgba(139, 92, 246, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, 25 + Math.sin(time / 70 + i) * 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 中央の強力なエネルギー
+      const centerGradient = ctx.createRadialGradient(targetX, targetY, 0, targetX, targetY, 80);
+      centerGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      centerGradient.addColorStop(0.2, 'rgba(168, 85, 247, 0.9)');
+      centerGradient.addColorStop(0.5, 'rgba(139, 92, 246, 0.7)');
+      centerGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = centerGradient;
+      ctx.beginPath();
+      ctx.arc(targetX, targetY, 70 + Math.sin(time / 50) * 15, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 稲妻のようなエネルギー
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 4;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#a855f7';
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(targetX, targetY);
+        ctx.lineTo(targetX + Math.cos(angle) * 100, targetY + Math.sin(angle) * 100);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'poison':
+      // どくどくのエフェクト - 毒の泡と煙
+      ctx.save();
+      // 毒の泡
+      for (let i = 0; i < 20; i++) {
+        const angle = (i / 20) * Math.PI * 2;
+        const radius = 50 + Math.sin(time / 100 + i) * 20;
+        const x = targetX + Math.cos(angle) * radius;
+        const y = targetY + Math.sin(angle) * radius;
+
+        ctx.fillStyle = `rgba(139, 92, 246, ${0.7 + Math.sin(time / 80 + i) * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 12 + Math.sin(time / 90 + i) * 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 泡のハイライト
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.beginPath();
+        ctx.arc(x - 3, y - 3, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 毒の煙
+      for (let i = 0; i < 5; i++) {
+        const smokeX = targetX + (Math.random() - 0.5) * 60;
+        const smokeY = targetY - 30 - i * 15;
+        const smokeSize = 20 + Math.sin(time / 100 + i) * 10;
+
+        const smokeGradient = ctx.createRadialGradient(smokeX, smokeY, 0, smokeX, smokeY, smokeSize);
+        smokeGradient.addColorStop(0, `rgba(139, 92, 246, ${0.6 + Math.sin(time / 80 + i) * 0.2})`);
+        smokeGradient.addColorStop(1, 'rgba(139, 92, 246, 0)');
+
+        ctx.fillStyle = smokeGradient;
+        ctx.beginPath();
+        ctx.arc(smokeX, smokeY, smokeSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      break;
+
+    case 'dragon_meteor':
+      // りゅうせいぐんのエフェクト - 流星が降り注ぐ
+      ctx.save();
+      const meteorProgress = effect.progress !== undefined ? effect.progress : 0;
+
+      // 複数の流星
+      for (let i = 0; i < 5; i++) {
+        const meteorAngle = (i / 5) * Math.PI * 2 + time / 200;
+        const meteorRadius = 150 + Math.sin(time / 100 + i) * 50;
+        const meteorX = targetX + Math.cos(meteorAngle) * meteorRadius;
+        const meteorY = targetY - 200 + Math.sin(meteorAngle) * meteorRadius * 0.5;
+
+        // 流星の軌跡
+        ctx.strokeStyle = `rgba(139, 92, 246, ${0.8 - i * 0.15})`;
+        ctx.lineWidth = 3 + i;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#8b5cf6';
+        ctx.beginPath();
+        ctx.moveTo(meteorX, meteorY);
+        ctx.lineTo(meteorX - 30, meteorY + 40);
+        ctx.stroke();
+
+        // 流星の本体
+        const meteorGradient = ctx.createRadialGradient(meteorX, meteorY, 0, meteorX, meteorY, 15);
+        meteorGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        meteorGradient.addColorStop(0.5, 'rgba(168, 85, 247, 0.9)');
+        meteorGradient.addColorStop(1, 'rgba(139, 92, 246, 0)');
+
+        ctx.fillStyle = meteorGradient;
+        ctx.beginPath();
+        ctx.arc(meteorX, meteorY, 12 + Math.sin(time / 50 + i) * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 着地時の爆発
+      if (meteorProgress > 0.8) {
+        const explosionSize = (meteorProgress - 0.8) / 0.2 * 120;
+        const explosionGradient = ctx.createRadialGradient(targetX, targetY, 0, targetX, targetY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.3, 'rgba(168, 85, 247, 0.9)');
+        explosionGradient.addColorStop(0.6, 'rgba(139, 92, 246, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.beginPath();
+        ctx.arc(targetX, targetY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'eternal_beam':
+      // エターナルビームのエフェクト - より強力なビーム
+      ctx.save();
+      const eternalProgress = effect.progress !== undefined ? effect.progress : 0;
+      const eternalStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const eternalStartY = effect.startY !== undefined ? effect.startY : targetY;
+      const eternalEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const eternalEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // ビームの本体（より太く、より強力に、長さを短く）
+      const totalDistance = Math.sqrt(Math.pow(eternalEndX - eternalStartX, 2) + Math.pow(eternalEndY - eternalStartY, 2));
+      const beamLength = Math.min(totalDistance * 0.7, totalDistance * eternalProgress); // 最大70%の長さ
+      const beamEndProgress = beamLength / totalDistance;
+      const eternalCurrentX = eternalStartX + (eternalEndX - eternalStartX) * beamEndProgress;
+      const eternalCurrentY = eternalStartY + (eternalEndY - eternalStartY) * beamEndProgress;
+
+      const beamGradient = ctx.createLinearGradient(eternalStartX, eternalStartY, eternalCurrentX, eternalCurrentY);
+      beamGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      beamGradient.addColorStop(0.2, 'rgba(255, 200, 255, 0.95)');
+      beamGradient.addColorStop(0.4, 'rgba(168, 85, 247, 0.9)');
+      beamGradient.addColorStop(0.6, 'rgba(139, 92, 246, 0.8)');
+      beamGradient.addColorStop(1, 'rgba(100, 50, 200, 0.7)');
+
+      ctx.strokeStyle = beamGradient;
+      ctx.lineWidth = 35 + Math.sin(time / 30) * 8;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = '#a855f7';
+
+      ctx.beginPath();
+      ctx.moveTo(eternalStartX, eternalStartY);
+      ctx.lineTo(eternalCurrentX, eternalCurrentY);
+      ctx.stroke();
+
+      // 内側のコア
+      ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+      ctx.lineWidth = 15;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(eternalStartX, eternalStartY);
+      ctx.lineTo(eternalCurrentX, eternalCurrentY);
+      ctx.stroke();
+
+      // ビームの周りのエネルギーリング
+      for (let i = 0; i < 3; i++) {
+        const ringX = eternalStartX + (eternalEndX - eternalStartX) * (eternalProgress - i * 0.1);
+        const ringY = eternalStartY + (eternalEndY - eternalStartY) * (eternalProgress - i * 0.1);
+        if (ringX >= eternalStartX && ringX <= eternalEndX) {
+          ctx.strokeStyle = `rgba(168, 85, 247, ${0.6 - i * 0.2})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(ringX, ringY, 20 + i * 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // 当たった時の爆発（より強力に）
+      if (eternalProgress > 0.9) {
+        const explosionProgress = (eternalProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 150;
+        const explosionGradient = ctx.createRadialGradient(eternalEndX, eternalEndY, 0, eternalEndX, eternalEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(255, 200, 255, 0.95)');
+        explosionGradient.addColorStop(0.4, 'rgba(168, 85, 247, 0.9)');
+        explosionGradient.addColorStop(0.6, 'rgba(139, 92, 246, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.beginPath();
+        ctx.arc(eternalEndX, eternalEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 爆発のパーティクル
+        for (let i = 0; i < 20; i++) {
+          const angle = (i / 20) * Math.PI * 2 + time / 100;
+          const radius = explosionSize * 0.7 + Math.sin(time / 50 + i) * 30;
+          const px = eternalEndX + Math.cos(angle) * radius;
+          const py = eternalEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.9 - explosionProgress);
+          ctx.fillStyle = `rgba(168, 85, 247, ${particleAlpha})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 12 + Math.sin(time / 60 + i) * 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
     default:
       break;
   }

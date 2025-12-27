@@ -182,8 +182,8 @@
                 // 音声を開始（ユーザーインタラクション後なので可能）
                 startAudio();
 
-                setP1({ ...char1, curHp: char1.hp, defBoost: 1, atkBoost: 1, key: p1Key });
-                setP2({ ...char2, curHp: char2.hp, defBoost: 1, atkBoost: 1, key: p2Key });
+                setP1({ ...char1, curHp: char1.hp, defBoost: 1, atkBoost: 1, key: p1Key, poisoned: false });
+                setP2({ ...char2, curHp: char2.hp, defBoost: 1, atkBoost: 1, key: p2Key, poisoned: false });
                 setGameState('battle');
                 setBgmActive(true); // バトル開始でBGMを有効化
                 setLogs([`ゆけっ！ ${char1.name}！`, `野生の ${char2.name}が あらわれた！`]);
@@ -239,6 +239,25 @@
                 const setDefender = isP1 ? setP2 : setP1;
                 const move = attacker.moves[moveIndex];
 
+                // どく状態のダメージ処理
+                if (attacker.poisoned) {
+                    const poisonDamage = Math.max(1, Math.floor(attacker.hp * 0.125)); // HPの1/8のダメージ
+                    addLog(`${attacker.name}は どくの ダメージを うけた！`);
+                    setAttacker(prev => {
+                        const newHp = Math.max(0, prev.curHp - poisonDamage);
+                        if (newHp <= 0) {
+                            setOver(isP1 ? 'lose' : 'win');
+                        }
+                        return { ...prev, curHp: newHp };
+                    });
+                    triggerShake(5);
+                    await new Promise(r => setTimeout(r, 600));
+                    if (over) {
+                        setBusy(false);
+                        return;
+                    }
+                }
+
                 addLog(`${attacker.name}の ${move.name}！`);
                 await new Promise(r => setTimeout(r, 400));
 
@@ -256,9 +275,73 @@
                     addLog(`${attacker.name}は きあいを いれた！ 攻撃UP！`);
                     setAttacker(prev => ({ ...prev, atkBoost: prev.atkBoost + 0.5 }));
                     await new Promise(r => setTimeout(r, 800));
+                } else if (move.status === "poison") {
+                    setActiveEffect({ type: 'poison', target: isP1 ? 'p2' : 'p1' });
+                    addLog(`${defender.name}は どくを うけた！`);
+                    // どく状態を適用
+                    setDefender(prev => ({ ...prev, poisoned: true }));
+                    await new Promise(r => setTimeout(r, 1000));
                 } else {
-                    // ビームエフェクトの場合は特別な処理
-                    if (move.effect === "beam") {
+                    // エフェクトの処理
+                    if (move.effect === "eternal_beam") {
+                        // エターナルビームエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 260;
+                        const startX = isP1 ? w * 0.05 : w * 0.95;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        // CPUのポケモンにより近い位置に設定（p2はw * 0.65, h * 0.05付近に表示）
+                        const targetX = isP1 ? w * 0.75 : w * 0.0;
+                        const targetY = isP1 ? h * 0.3 : h * 0.6;
+
+                        setActiveEffect({
+                            type: 'eternal_beam',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'eternal_beam') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "dragon_meteor") {
+                        // りゅうせいぐんエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'dragon_meteor',
+                            target: isP1 ? 'p2' : 'p1',
+                            targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'dragon_meteor') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 30));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "eternal_storm") {
+                        // ムゲンストームエフェクト
+                        setActiveEffect({ type: 'eternal_storm', target: isP1 ? 'p2' : 'p1' });
+                        await new Promise(r => setTimeout(r, 1200));
+                    } else if (move.effect === "poison") {
+                        // どくどくエフェクト
+                        setActiveEffect({ type: 'poison', target: isP1 ? 'p2' : 'p1' });
+                        addLog(`${defender.name}は どくを うけた！`);
+                        // どく状態を適用
+                        setDefender(prev => ({ ...prev, poisoned: true }));
+                        await new Promise(r => setTimeout(r, 1000));
+                    } else if (move.effect === "beam") {
                         const w = canvasRef.current?.width || 640;
                         const h = canvasRef.current?.height || 360;
                         const startX = isP1 ? w * 0.25 : w * 0.75;
@@ -465,7 +548,15 @@
                         const hpP = data.curHp / data.hp;
                         ctx.fillStyle = hpP > 0.5 ? '#22c55e' : hpP > 0.2 ? '#eab308' : '#ef4444';
                         ctx.fillRect(x + 15, y + 40, 190 * hpP, 12);
-                        ctx.fillStyle = '#64748b'; ctx.font = '12px monospace'; ctx.fillText(`${Math.ceil(data.curHp)}/${data.hp}`, x + 150, y + 65);
+                        // HP表示と状態異常表示
+                        ctx.fillStyle = '#64748b'; ctx.font = '12px monospace';
+                        const hpText = `${Math.ceil(data.curHp)}/${data.hp}`;
+                        ctx.fillText(hpText, x + 15, y + 65);
+                        // どく状態の表示
+                        if (data.poisoned) {
+                            ctx.fillStyle = '#a855f7'; ctx.font = 'bold 11px DotGothic16';
+                            ctx.fillText('どく', x + 15 + ctx.measureText(hpText).width + 8, y + 65);
+                        }
                         ctx.restore();
                     };
                     drawStatus(30, 40, p2); drawStatus(w - 250, h - 110, p1);
@@ -548,13 +639,9 @@
                     </div>
 
                     {/* Log Display */}
-                    <div className="bg-slate-900 p-4 border-t-4 border-slate-700 h-32 md:h-40 font-pixel overflow-y-auto log-container flex flex-col-reverse shadow-inner">
-                        <div>
-                            {logs.map((log, i) => (
-                                <div key={i} className={`mb-1 transition-all ${i === 0 ? "text-white text-xl md:text-2xl border-l-4 border-yellow-500 pl-3" : "text-slate-500 text-sm pl-4"}`}>
-                                    {log}
-                                </div>
-                            ))}
+                    <div className="bg-slate-900 p-4 border-t-4 border-slate-700 h-32 md:h-40 font-pixel flex items-center shadow-inner">
+                        <div className="text-white text-xl md:text-2xl border-l-4 border-yellow-500 pl-3">
+                            {logs[0] || "ポケモンを えらんでね！"}
                         </div>
                     </div>
 
@@ -567,7 +654,7 @@
                                     key={move.name}
                                     onClick={() => executeTurn("player", idx)}
                                     disabled={turn !== "player" || busy || over}
-                                    className={`p-3 md:p-4 text-xs md:text-sm font-bold rounded-xl border-2 transition-all pixel-border ${turn === "player" && !busy && !over ? "bg-slate-700 text-white border-slate-500 hover:border-yellow-400 active:translate-y-1" : "bg-slate-800 text-slate-600 border-transparent opacity-50"}`}
+                                    className={`p-3 md:p-4 text-xs md:text-sm font-bold rounded-xl border-2 transition-all pixel-border whitespace-nowrap ${turn === "player" && !busy && !over ? "bg-slate-700 text-white border-slate-500 hover:border-yellow-400 active:translate-y-1" : "bg-slate-800 text-slate-600 border-transparent opacity-50"}`}
                                 >
                                     {move.name}
                                 </button>
