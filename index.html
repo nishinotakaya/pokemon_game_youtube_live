@@ -100,15 +100,220 @@
             const [shake, setShake] = useState(0);
             const [p1Action, setP1Action] = useState("idle");
             const [p2Action, setP2Action] = useState("idle");
+            const [evolutionEffect, setEvolutionEffect] = useState(null); // 進化演出用
+            const [evolutionComplete, setEvolutionComplete] = useState(null); // 進化完了後の表示用
 
             const canvasRef = useRef(null);
             const imagesRef = useRef({ p1: new Image(), p2: new Image() });
             const basagiriImageRef = useRef(null);
+            const evolvedPokemonImageRef = useRef(null);
+            const evolvedP1ImageRef = useRef(null); // 進化後のプレイヤーポケモン用
+            const megaCharizardBackImageRef = useRef(null); // メガリザードン背後画像用
+            const megaLucarioBackImageRef = useRef(null); // メガルカリオ背後画像用
+            const megaRayquazaBackImageRef = useRef(null); // メガレックウザ背後画像用
             const particles = useRef([]);
             const ballAnimRef = useRef({ active: false, progress: 0, status: 'none', shakeCount: 0 });
             const beamProgressRef = useRef(0);
             const audioRef = useRef(null);
             const audioContextRef = useRef(null);
+
+            // 勝利回数の管理（localStorage使用）
+            const getWinCount = (pokemonKey) => {
+                const saved = localStorage.getItem(`pokemon_wins_${pokemonKey}`);
+                return saved ? parseInt(saved, 10) : 0;
+            };
+
+            const setWinCount = (pokemonKey, count) => {
+                localStorage.setItem(`pokemon_wins_${pokemonKey}`, count.toString());
+            };
+
+            const resetEvolution = (pokemonKey) => {
+                localStorage.removeItem(`pokemon_wins_${pokemonKey}`);
+            };
+
+            // 進化チェックと実行
+            const checkEvolution = async (pokemonKey) => {
+                if (!EVOLUTION_MAP[pokemonKey]) return false;
+
+                const evolution = EVOLUTION_MAP[pokemonKey];
+                const currentWins = getWinCount(pokemonKey);
+                const newWins = currentWins + 1;
+                setWinCount(pokemonKey, newWins);
+
+                if (newWins >= evolution.winsNeeded) {
+                    // 進化済みフラグを保存
+                    localStorage.setItem(`pokemon_evolved_${pokemonKey}`, 'true');
+
+                    // 進化イベント発動
+                    setEvolutionEffect({
+                        pokemonKey: pokemonKey,
+                        evolvedKey: evolution.evolved,
+                        oldName: POKEMON_DATA[pokemonKey].name,
+                        newName: POKEMON_DATA[evolution.evolved].name,
+                        progress: 0
+                    });
+
+                    // 進化演出（約7秒）
+                    await new Promise(r => setTimeout(r, 400));
+                    addLog(`おや？${POKEMON_DATA[pokemonKey].name}の ようすが...`);
+                    await new Promise(r => setTimeout(r, 800));
+
+                    // カッコいい照明エフェクト（ゆっくりと光が強くなる）
+                    for (let p = 0; p <= 1; p += 0.02) {
+                        setEvolutionEffect(prev => prev ? { ...prev, progress: p } : null);
+                        await new Promise(r => setTimeout(r, 35));
+                    }
+
+                    // 最大輝度を維持（進化後のポケモンを表示）
+                    await new Promise(r => setTimeout(r, 1200));
+
+                    addLog(`→${POKEMON_DATA[evolution.evolved].name}に なりました！`);
+                    await new Promise(r => setTimeout(r, 800));
+
+                    // エフェクトをフェードアウト
+                    for (let p = 1; p >= 0; p -= 0.04) {
+                        setEvolutionEffect(prev => prev ? { ...prev, progress: p } : null);
+                        await new Promise(r => setTimeout(r, 35));
+                    }
+
+                    setEvolutionEffect(null);
+                    // 進化完了後の表示を設定
+                    setEvolutionComplete({
+                        evolvedKey: evolution.evolved,
+                        evolvedName: POKEMON_DATA[evolution.evolved].name
+                    });
+                    return true;
+                }
+                return false;
+            };
+
+            // 進化済みかチェック
+            const isEvolved = (pokemonKey) => {
+                return localStorage.getItem(`pokemon_evolved_${pokemonKey}`) === 'true';
+            };
+
+            // 進化済みポケモンのキーを取得
+            const getEvolvedKey = (pokemonKey) => {
+                if (!EVOLUTION_MAP[pokemonKey]) return pokemonKey;
+                return isEvolved(pokemonKey) ? EVOLUTION_MAP[pokemonKey].evolved : pokemonKey;
+            };
+
+            // 全進化をリセット
+            const resetAllEvolutions = () => {
+                Object.keys(EVOLUTION_MAP).forEach(key => {
+                    resetEvolution(key);
+                    localStorage.removeItem(`pokemon_evolved_${key}`);
+                });
+                window.location.reload(); // 画面をリロードして反映
+            };
+
+            // メガリザードン背後画像の読み込み（背景透過処理付き）
+            useEffect(() => {
+                if (!megaCharizardBackImageRef.current) {
+                    const img = new Image();
+                    img.onload = () => {
+                        // 背景透過処理
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const data = imageData.data;
+
+                        // 白い背景を透過させる
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            // 白に近い色（閾値調整可能）を透過させる
+                            if (r > 240 && g > 240 && b > 240) {
+                                data[i + 3] = 0; // アルファチャンネルを0に
+                            }
+                        }
+
+                        ctx.putImageData(imageData, 0, 0);
+                        megaCharizardBackImageRef.current = canvas;
+                    };
+                    img.onerror = () => {
+                        console.log('メガリザードン背後画像の読み込みに失敗しました');
+                    };
+                    img.src = 'メガリザードン背後.png';
+                }
+            }, []);
+
+            // メガルカリオ背後画像の読み込み（背景透過処理付き）
+            useEffect(() => {
+                if (!megaLucarioBackImageRef.current) {
+                    const img = new Image();
+                    img.onload = () => {
+                        // 背景透過処理
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const data = imageData.data;
+
+                        // 白い背景を透過させる
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            // 白に近い色（閾値調整可能）を透過させる
+                            if (r > 240 && g > 240 && b > 240) {
+                                data[i + 3] = 0; // アルファチャンネルを0に
+                            }
+                        }
+
+                        ctx.putImageData(imageData, 0, 0);
+                        megaLucarioBackImageRef.current = canvas;
+                    };
+                    img.onerror = () => {
+                        console.log('メガルカリオ背後画像の読み込みに失敗しました');
+                    };
+                    img.src = 'メガルカリオ背後.png';
+                }
+            }, []);
+
+            // メガレックウザ背後画像の読み込み（背景透過処理付き）
+            useEffect(() => {
+                if (!megaRayquazaBackImageRef.current) {
+                    const img = new Image();
+                    img.onload = () => {
+                        // 背景透過処理
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const data = imageData.data;
+
+                        // 白い背景を透過させる
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            // 白に近い色（閾値調整可能）を透過させる
+                            if (r > 240 && g > 240 && b > 240) {
+                                data[i + 3] = 0; // アルファチャンネルを0に
+                            }
+                        }
+
+                        ctx.putImageData(imageData, 0, 0);
+                        megaRayquazaBackImageRef.current = canvas;
+                    };
+                    img.onerror = () => {
+                        console.log('メガレックウザ背後画像の読み込みに失敗しました');
+                    };
+                    img.src = 'メガレックウザ.png';
+                }
+            }, []);
 
             // バサギリの画像を読み込む（背景透過処理付き）
             useEffect(() => {
@@ -172,10 +377,12 @@
 
             // --- Logic ---
             const startBattle = (p1Key, p2Key) => {
-                const char1 = getPokemonWithMoves(p1Key);
+                // 進化済みの場合は進化後のキーを使用
+                const actualP1Key = getEvolvedKey(p1Key);
+                const char1 = getPokemonWithMoves(actualP1Key);
                 const char2 = getPokemonWithMoves(p2Key);
                 if (!char1 || !char2) {
-                    console.error('ポケモンデータが見つかりません:', { p1Key, p2Key, char1, char2 });
+                    console.error('ポケモンデータが見つかりません:', { p1Key, p2Key, actualP1Key, char1, char2 });
                     return;
                 }
 
@@ -396,7 +603,10 @@
                     await new Promise(r => setTimeout(r, 600));
 
                     const modifier = (TYPE_CHART[move.type]?.[defender.type] || 1.0) * (move.type === attacker.type ? 1.5 : 1.0);
-                    const damage = Math.max(1, Math.floor(((move.power * 0.3) * modifier * (0.85 + Math.random() * 0.15) * attacker.atkBoost) / defender.defBoost));
+                    // メガ進化ポケモンの場合は攻撃力を1.5倍に
+                    const isMegaEvolved = (attacker.key === 'raichu' || attacker.key === 'mega_rayquaza' || attacker.key === 'mega_charizard' || attacker.key === 'mega_lucario');
+                    const megaMultiplier = isMegaEvolved ? 1.5 : 1.0;
+                    const damage = Math.max(1, Math.floor(((move.power * 0.3) * modifier * (0.85 + Math.random() * 0.15) * attacker.atkBoost * megaMultiplier) / defender.defBoost));
 
                     if (isP1) setP2Action("hit"); else setP1Action("hit");
 
@@ -405,7 +615,16 @@
 
                     setDefender(prev => {
                         const newHp = Math.max(0, prev.curHp - damage);
-                        if (newHp <= 0) setOver(isP1 ? 'win' : 'lose');
+                        if (newHp <= 0) {
+                            if (isP1) {
+                                // プレイヤーの勝利
+                                setOver('win');
+                                // 進化チェック
+                                checkEvolution(p1.key);
+                            } else {
+                                setOver('lose');
+                            }
+                        }
                         return { ...prev, curHp: newHp };
                     });
 
@@ -496,7 +715,33 @@
                     if (p1.key === 'scyther_alt') {
                         // バサギリのカスタム画像を使用（既に読み込まれている）
                     } else {
-                        imagesRef.current.p1.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${p1.id}.png`;
+                        // 進化済みの場合は特別なURLを使用
+                        const actualP1Key = getEvolvedKey(p1.key);
+                        // メガリザードンとメガルカリオはローカル画像を使用するため、URL設定をスキップ
+                        if (actualP1Key !== 'mega_charizard' && actualP1Key !== 'mega_lucario') {
+                            let p1ImageUrl;
+                            if (p1.key === 'black_rayquaza') {
+                                // ブラックレックウザは特別な画像を使用
+                                p1ImageUrl = 'https://img.pokemondb.net/sprites/black-white/back-shiny/rayquaza.png';
+                            } else if (actualP1Key === 'mega_rayquaza') {
+                                p1ImageUrl = 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/rayquaza.gif';
+                            } else {
+                                p1ImageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${p1.id}.png`;
+                            }
+
+                            // 進化済みの場合は別の画像参照を使用
+                            if (actualP1Key !== p1.key && actualP1Key !== 'mega_charizard' && actualP1Key !== 'mega_lucario' && actualP1Key !== 'mega_rayquaza') {
+                                if (!evolvedP1ImageRef.current || evolvedP1ImageRef.current.src !== p1ImageUrl) {
+                                    const img = new Image();
+                                    img.src = p1ImageUrl;
+                                    evolvedP1ImageRef.current = img;
+                                }
+                            } else {
+                                if (imagesRef.current.p1.src !== p1ImageUrl) {
+                                    imagesRef.current.p1.src = p1ImageUrl;
+                                }
+                            }
+                        }
                     }
 
                     imagesRef.current.p2.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p2.id}.png`;
@@ -511,7 +756,71 @@
                     if (p1.key === 'scyther_alt') {
                         drawBasagiri(p1X, p1Y, p1Size, p1Action);
                     } else {
-                        drawPoke(imagesRef.current.p1, p1X, p1Y, p1Size, p1Action);
+                        // 進化済みの場合は進化後の画像を使用
+                        const actualP1Key = getEvolvedKey(p1.key);
+
+                        // メガリザードン、メガルカリオ、メガレックウザはローカル画像を使用
+                        if (actualP1Key === 'mega_charizard' && megaCharizardBackImageRef.current) {
+                            ctx.save();
+                            if (p1Action === 'hit') {
+                                ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
+                                ctx.translate((Math.random() - 0.5) * 10, 0);
+                            }
+                            // 画像自体は小さく、横幅を広げて描画（回転なし）
+                            const baseSize = p1Size * 0.7; // 30%小さく
+                            const drawWidth = baseSize * 1.3; // 横幅を30%広げる
+                            const drawHeight = baseSize; // 高さはそのまま
+                            const adjustedX = p1X - (drawWidth - p1Size) / 2;
+                            const adjustedY = p1Y - (drawHeight - p1Size) / 2;
+                            // canvas要素の場合はそのまま描画
+                            if (megaCharizardBackImageRef.current instanceof HTMLCanvasElement) {
+                                ctx.drawImage(megaCharizardBackImageRef.current, adjustedX, adjustedY, drawWidth, drawHeight);
+                            } else if (megaCharizardBackImageRef.current.complete && megaCharizardBackImageRef.current.naturalWidth > 0) {
+                                ctx.drawImage(megaCharizardBackImageRef.current, adjustedX, adjustedY, drawWidth, drawHeight);
+                            }
+                            ctx.restore();
+                        } else if (actualP1Key === 'mega_rayquaza' && megaRayquazaBackImageRef.current) {
+                            ctx.save();
+                            if (p1Action === 'hit') {
+                                ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
+                                ctx.translate((Math.random() - 0.5) * 10, 0);
+                            }
+                            // 画像自体は小さく、横幅を広げて描画（回転なし）
+                            const baseSize = p1Size * 0.7; // 30%小さく
+                            const drawWidth = baseSize * 1.5; // 横幅を50%広げる
+                            const drawHeight = baseSize; // 高さはそのまま
+                            const adjustedX = p1X - (drawWidth - p1Size) / 2;
+                            const adjustedY = p1Y - (drawHeight - p1Size) / 2;
+                            // canvas要素の場合はそのまま描画
+                            if (megaRayquazaBackImageRef.current instanceof HTMLCanvasElement) {
+                                ctx.drawImage(megaRayquazaBackImageRef.current, adjustedX, adjustedY, drawWidth, drawHeight);
+                            } else if (megaRayquazaBackImageRef.current.complete && megaRayquazaBackImageRef.current.naturalWidth > 0) {
+                                ctx.drawImage(megaRayquazaBackImageRef.current, adjustedX, adjustedY, drawWidth, drawHeight);
+                            }
+                            ctx.restore();
+                        } else if (actualP1Key === 'mega_lucario' && megaLucarioBackImageRef.current) {
+                            ctx.save();
+                            if (p1Action === 'hit') {
+                                ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
+                                ctx.translate((Math.random() - 0.5) * 10, 0);
+                            }
+                            // そのまま描画（回転なし、元のサイズのまま）
+                            if (megaLucarioBackImageRef.current instanceof HTMLCanvasElement) {
+                                ctx.drawImage(megaLucarioBackImageRef.current, p1X, p1Y, p1Size, p1Size);
+                            } else if (megaLucarioBackImageRef.current.complete && megaLucarioBackImageRef.current.naturalWidth > 0) {
+                                ctx.drawImage(megaLucarioBackImageRef.current, p1X, p1Y, p1Size, p1Size);
+                            }
+                            ctx.restore();
+                        } else {
+                            let p1Image = imagesRef.current.p1;
+                            if (actualP1Key !== p1.key && evolvedP1ImageRef.current) {
+                                // 進化済みの場合は進化後の画像を使用
+                                if (evolvedP1ImageRef.current.complete && evolvedP1ImageRef.current.naturalWidth > 0) {
+                                    p1Image = evolvedP1ImageRef.current;
+                                }
+                            }
+                            drawPoke(p1Image, p1X, p1Y, p1Size, p1Action);
+                        }
                     }
 
                     if (ballAnimRef.current.active) {
@@ -538,6 +847,159 @@
                         if (window.drawEffect) {
                             window.drawEffect(ctx, activeEffect, tx, ty, w, h);
                         }
+                    }
+
+                    // 進化演出（カッコいいエフェクト）
+                    if (evolutionEffect) {
+                        ctx.save();
+                        const time = Date.now();
+                        const progress = evolutionEffect.progress || 0;
+                        const centerX = w / 2;
+                        const centerY = h / 2;
+
+                        // 進化後のポケモンの画像を表示
+                        if (evolutionEffect.evolvedKey && progress > 0.3) {
+                            const evolvedData = POKEMON_DATA[evolutionEffect.evolvedKey];
+                            if (evolvedData) {
+                                // メガリザードン、メガレックウザ、メガルカリオは特別なURLを使用
+                                let imageUrl;
+                                if (evolutionEffect.evolvedKey === 'mega_charizard') {
+                                    imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/0c2f066d11c448109862cec46eb62521.png';
+                                } else if (evolutionEffect.evolvedKey === 'mega_rayquaza') {
+                                    imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
+                                } else if (evolutionEffect.evolvedKey === 'mega_lucario') {
+                                    imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
+                                } else {
+                                    imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${evolvedData.id}.png`;
+                                }
+
+                                // 画像を事前に読み込む（エラーハンドリング付き）
+                                if (!evolvedPokemonImageRef.current || evolvedPokemonImageRef.current.src !== imageUrl) {
+                                    const img = new Image();
+                                    // CORSエラーを回避するため、crossOriginを設定しない（zukan.pokemon.co.jpはCORSを許可していない）
+                                    if (!imageUrl.includes('zukan.pokemon.co.jp')) {
+                                        img.crossOrigin = 'anonymous';
+                                    }
+                                    img.onerror = () => {
+                                        // 画像読み込みエラー時は何もしない（描画をスキップ）
+                                        console.log('画像の読み込みに失敗しました:', imageUrl);
+                                    };
+                                    img.src = imageUrl;
+                                    evolvedPokemonImageRef.current = img;
+                                }
+
+                                const pokemonImg = evolvedPokemonImageRef.current;
+                                // 画像が正常に読み込まれているか確認（エラー状態でないかチェック）
+                                if (pokemonImg &&
+                                    pokemonImg.complete &&
+                                    pokemonImg.naturalWidth > 0 &&
+                                    pokemonImg.naturalHeight > 0) {
+                                    try {
+                                        // 画像をより大きく表示
+                                        const baseImgSize = 300;
+                                        const imgSize = baseImgSize + Math.sin(time / 80) * 30;
+                                        const imgAlpha = Math.min(1, (progress - 0.3) / 0.3);
+                                        ctx.globalAlpha = imgAlpha;
+                                        ctx.shadowBlur = 50;
+                                        ctx.shadowColor = 'rgba(255, 255, 255, 1)';
+                                        // 画像の周りに光るエフェクト
+                                        ctx.fillStyle = `rgba(255, 255, 255, ${imgAlpha * 0.3})`;
+                                        ctx.beginPath();
+                                        ctx.arc(centerX, centerY, imgSize / 2 + 20, 0, Math.PI * 2);
+                                        ctx.fill();
+                                        ctx.drawImage(pokemonImg, centerX - imgSize / 2, centerY - imgSize / 2, imgSize, imgSize);
+                                        ctx.globalAlpha = 1;
+                                        ctx.shadowBlur = 0;
+                                    } catch (e) {
+                                        // 描画エラー時は何もしない（CORSエラーなど）
+                                        // エラーを無視して進化演出を続行
+                                    }
+                                }
+                            }
+                        }
+
+                        // 背景の光るエフェクト（より強く）
+                        const lightIntensity = Math.min(progress * 1.5, 1);
+                        const lightGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(w, h) * 2);
+                        lightGradient.addColorStop(0, `rgba(255, 255, 255, ${lightIntensity * 1.0})`);
+                        lightGradient.addColorStop(0.15, `rgba(255, 255, 200, ${lightIntensity * 0.9})`);
+                        lightGradient.addColorStop(0.3, `rgba(255, 200, 100, ${lightIntensity * 0.7})`);
+                        lightGradient.addColorStop(0.5, `rgba(200, 150, 255, ${lightIntensity * 0.5})`);
+                        lightGradient.addColorStop(0.7, `rgba(150, 100, 255, ${lightIntensity * 0.3})`);
+                        lightGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+                        ctx.fillStyle = lightGradient;
+                        ctx.fillRect(0, 0, w, h);
+
+                        // 光のリング（複数）
+                        for (let i = 0; i < 5; i++) {
+                            const ringProgress = Math.max(0, progress - i * 0.15);
+                            if (ringProgress > 0) {
+                                const baseRingSize = ringProgress * Math.max(w, h) * 0.8;
+                                const sinOffset = Math.sin(time / 100 + i) * 20;
+                                const ringSize = Math.max(10, baseRingSize + sinOffset); // 最小値10を保証
+                                const ringAlpha = Math.max(0, (1 - ringProgress) * 0.6);
+
+                                ctx.strokeStyle = `rgba(255, 255, 255, ${ringAlpha})`;
+                                ctx.lineWidth = Math.max(1, 8 - i * 1.2);
+                                ctx.shadowBlur = 30;
+                                ctx.shadowColor = `rgba(255, 255, 200, ${ringAlpha})`;
+                                ctx.beginPath();
+                                ctx.arc(centerX, centerY, ringSize, 0, Math.PI * 2);
+                                ctx.stroke();
+                            }
+                        }
+
+                        // パーティクル（星のような光）
+                        for (let i = 0; i < 20; i++) {
+                            const angle = (i / 20) * Math.PI * 2 + (time / 50);
+                            const distance = progress * Math.max(w, h) * 0.6;
+                            const px = centerX + Math.cos(angle) * distance;
+                            const py = centerY + Math.sin(angle) * distance;
+                            const particleSize = Math.max(2, 5 + Math.sin(time / 100 + i) * 3); // 最小値2を保証
+                            const particleAlpha = Math.max(0, (1 - progress) * 0.8);
+
+                            ctx.fillStyle = `rgba(255, 255, 200, ${particleAlpha})`;
+                            ctx.shadowBlur = 15;
+                            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+                            ctx.beginPath();
+                            ctx.arc(px, py, particleSize, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+
+                        // 中心からの光のビーム
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (i / 8) * Math.PI * 2 + (time / 200);
+                            const beamLength = progress * Math.max(w, h) * 0.7;
+                            const endX = centerX + Math.cos(angle) * beamLength;
+                            const endY = centerY + Math.sin(angle) * beamLength;
+
+                            const beamGradient = ctx.createLinearGradient(centerX, centerY, endX, endY);
+                            beamGradient.addColorStop(0, `rgba(255, 255, 255, ${progress * 0.8})`);
+                            beamGradient.addColorStop(0.5, `rgba(255, 255, 200, ${progress * 0.5})`);
+                            beamGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+
+                            ctx.strokeStyle = beamGradient;
+                            ctx.lineWidth = 4;
+                            ctx.shadowBlur = 20;
+                            ctx.shadowColor = 'rgba(255, 255, 255, 0.6)';
+                            ctx.beginPath();
+                            ctx.moveTo(centerX, centerY);
+                            ctx.lineTo(endX, endY);
+                            ctx.stroke();
+                        }
+
+                        // 中心の光るコア
+                        const coreSize = Math.max(20, 30 + Math.sin(time / 50) * 10); // 最小値20を保証
+                        const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, coreSize);
+                        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${Math.max(0, Math.min(1, progress))})`);
+                        coreGradient.addColorStop(0.5, `rgba(255, 255, 200, ${Math.max(0, Math.min(1, progress * 0.7))})`);
+                        coreGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+                        ctx.fillStyle = coreGradient;
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, coreSize, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.restore();
                     }
 
                     const drawStatus = (x, y, data) => {
@@ -604,7 +1066,7 @@
                 };
                 render();
                 return () => cancelAnimationFrame(animationId);
-            }, [gameState, p1, p2, activeEffect, shake, p1Action, p2Action]);
+            }, [gameState, p1, p2, activeEffect, shake, p1Action, p2Action, evolutionEffect]);
 
             // --- UI Components ---
             if (gameState === 'select') {
@@ -615,22 +1077,142 @@
                         </div>
                         <div className="overflow-y-auto px-4 md:px-6 pb-4 md:pb-6 flex-1">
                             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {Object.entries(POKEMON_DATA).map(([key, data]) => (
-                                    <button
-                                        key={key}
-                                        onClick={() => {
-                                            const allKeys = Object.keys(POKEMON_DATA).filter(k => k !== key);
-                                            const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
-                                            startBattle(key, randomKey);
-                                        }}
-                                        className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center"
-                                    >
-                                        <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`} className="w-32 h-32 group-hover:scale-110 transition-transform" />
-                                        <span className="text-xl mt-2">{data.name}</span>
-                                        <span className="text-xs text-slate-400 uppercase">{data.type} TYPE</span>
-                                    </button>
-                                ))}
+                                {Object.entries(POKEMON_DATA).map(([key, data]) => {
+                                    const evolvedKeys = Object.values(EVOLUTION_MAP).map(e => e.evolved);
+
+                                    // 進化系のポケモンで、対応する進化前のポケモンが進化済みの場合は表示
+                                    if (evolvedKeys.includes(key)) {
+                                        // この進化系ポケモンに対応する進化前のポケモンを探す
+                                        const baseKey = Object.keys(EVOLUTION_MAP).find(k => EVOLUTION_MAP[k].evolved === key);
+                                        if (baseKey && isEvolved(baseKey)) {
+                                            // 進化済みなので進化後のポケモンを表示
+                                            // メガリザードン、メガレックウザ、メガルカリオは特別なURLを使用
+                                            let imageUrl;
+                                            if (key === 'mega_charizard') {
+                                                imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/0c2f066d11c448109862cec46eb62521.png';
+                                            } else if (key === 'mega_rayquaza') {
+                                                imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
+                                            } else if (key === 'mega_lucario') {
+                                                imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
+                                            } else {
+                                                imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`;
+                                            }
+
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => {
+                                                        const allKeys = Object.keys(POKEMON_DATA).filter(k => {
+                                                            if (evolvedKeys.includes(k)) {
+                                                                const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
+                                                                return baseK && isEvolved(baseK) ? k !== key : false;
+                                                            }
+                                                            const evoKey = getEvolvedKey(k);
+                                                            return evoKey !== key;
+                                                        });
+                                                        const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
+                                                        startBattle(key, randomKey);
+                                                    }}
+                                                    className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative"
+                                                >
+                                                    <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
+                                                    <span className="text-xl mt-2">{data.name}</span>
+                                                    <span className="text-xs text-slate-400 uppercase">{data.type} TYPE</span>
+                                                </button>
+                                            );
+                                        }
+                                        return null;
+                                    }
+
+                                    // 進化前のポケモンで、進化済みの場合はスキップ（進化後のポケモンが表示されるため）
+                                    if (EVOLUTION_MAP[key] && isEvolved(key)) {
+                                        return null;
+                                    }
+
+                                    // 進化前のポケモンで未進化の場合のみ表示
+                                    if (EVOLUTION_MAP[key] && !isEvolved(key)) {
+                                        const displayKey = getEvolvedKey(key);
+                                        const displayData = POKEMON_DATA[displayKey] || data;
+                                        // メガリザードン、メガレックウザ、メガルカリオは特別なURLを使用
+                                        let imageUrl;
+                                        if (displayKey === 'mega_charizard') {
+                                            imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/0c2f066d11c448109862cec46eb62521.png';
+                                        } else if (displayKey === 'mega_rayquaza') {
+                                            imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
+                                        } else if (displayKey === 'mega_lucario') {
+                                            imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
+                                        } else {
+                                            imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${displayData.id}.png`;
+                                        }
+
+                                        return (
+                                            <button
+                                                key={key}
+                                                onClick={() => {
+                                                    const allKeys = Object.keys(POKEMON_DATA).filter(k => {
+                                                        if (evolvedKeys.includes(k)) {
+                                                            const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
+                                                            return baseK && isEvolved(baseK) ? k !== displayKey : false;
+                                                        }
+                                                        const evoKey = getEvolvedKey(k);
+                                                        return evoKey !== displayKey;
+                                                    });
+                                                    const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
+                                                    startBattle(displayKey, randomKey);
+                                                }}
+                                                className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative"
+                                            >
+                                                <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
+                                                <span className="text-xl mt-2">{displayData.name}</span>
+                                                <span className="text-xs text-slate-400 uppercase">{displayData.type} TYPE</span>
+                                            </button>
+                                        );
+                                    }
+
+                                    // 進化できないポケモンはそのまま表示
+                                    // ブラックレックウザは特別な画像を使用
+                                    let imageUrl;
+                                    if (key === 'black_rayquaza') {
+                                        imageUrl = 'https://img.pokemondb.net/sprites/black-white/shiny/rayquaza.png';
+                                    } else {
+                                        imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`;
+                                    }
+
+                                    return (
+                                        <button
+                                            key={key}
+                                            onClick={() => {
+                                                const allKeys = Object.keys(POKEMON_DATA).filter(k => {
+                                                    if (evolvedKeys.includes(k)) {
+                                                        const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
+                                                        return baseK && isEvolved(baseK) ? k !== key : false;
+                                                    }
+                                                    const evoKey = getEvolvedKey(k);
+                                                    return evoKey !== key;
+                                                });
+                                                const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
+                                                startBattle(key, randomKey);
+                                            }}
+                                            className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center"
+                                        >
+                                            <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
+                                            <span className="text-xl mt-2">{data.name}</span>
+                                            <span className="text-xs text-slate-400 uppercase">{data.type} TYPE</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
+                            {/* 進化済みのポケモンがある場合のみリセットボタンを表示（進化演出中は非表示） */}
+                            {Object.keys(EVOLUTION_MAP).some(key => isEvolved(key)) && !evolutionEffect && (
+                                <div className="mt-4 flex justify-center">
+                                    <button
+                                        onClick={resetAllEvolutions}
+                                        className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl font-bold transition-all font-pixel border-2 border-red-500"
+                                    >
+                                        進化をリセット
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
@@ -664,14 +1246,71 @@
                     {/* Battle Canvas */}
                     <div className="relative bg-black overflow-hidden aspect-video">
                         <canvas ref={canvasRef} width={640} height={360} className="w-full h-full object-contain" />
-                        {over && (
+                        {/* 進化完了後の表示 */}
+                        {evolutionComplete && (
+                            <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center text-white p-2 sm:p-4 animate-in fade-in duration-500 overflow-hidden">
+                                <div className="flex flex-col items-center justify-center w-full h-full max-w-full">
+                                    {(() => {
+                                        const evolvedData = POKEMON_DATA[evolutionComplete.evolvedKey];
+                                        let imageUrl;
+                                        if (evolutionComplete.evolvedKey === 'mega_charizard') {
+                                            imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/0c2f066d11c448109862cec46eb62521.png';
+                                        } else if (evolutionComplete.evolvedKey === 'mega_rayquaza') {
+                                            imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
+                                        } else if (evolutionComplete.evolvedKey === 'mega_lucario') {
+                                            imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
+                                        } else {
+                                            imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${evolvedData.id}.png`;
+                                        }
+                                        return (
+                                            <>
+                                                <div className="w-full flex justify-center items-center mb-2 sm:mb-3 md:mb-4 flex-shrink-0" style={{ minHeight: '60px', maxHeight: '20vh' }}>
+                                                    <img
+                                                        src={imageUrl}
+                                                        className="w-[80px] h-[80px] sm:w-[110px] sm:h-[110px] md:w-[160px] md:h-[160px] lg:w-[240px] lg:h-[240px] object-contain drop-shadow-2xl animate-pulse"
+                                                        style={{
+                                                            filter: 'drop-shadow(0 0 30px rgba(255, 255, 255, 0.8))',
+                                                            maxWidth: '40vw',
+                                                            maxHeight: '18vh',
+                                                            width: 'auto',
+                                                            height: 'auto'
+                                                        }}
+                                                        alt={evolutionComplete.evolvedName}
+                                                    />
+                                                </div>
+                                                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-black mb-2 sm:mb-3 md:mb-6 font-pixel text-yellow-400 italic text-center drop-shadow-lg px-2 flex-shrink-0">
+                                                    {evolutionComplete.evolvedName}
+                                                </h2>
+                                                <button
+                                                    onClick={() => {
+                                                        setGameState('select');
+                                                        setBgmActive(false);
+                                                        setEvolutionComplete(null);
+                                                    }}
+                                                    className="bg-white text-slate-900 px-4 py-1 sm:px-5 sm:py-1.5 md:px-7 md:py-2 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel text-xs sm:text-sm md:text-base flex-shrink-0"
+                                                >
+                                                    タイトルに戻る
+                                                </button>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+                        )}
+                        {over && !evolutionComplete && (
                             <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white p-4 animate-in fade-in duration-500">
                                 <h2 className="text-5xl font-black mb-6 font-pixel text-yellow-400 italic text-center">
                                     {over === 'win' ? "勝利！" : over === 'caught' ? "つかまえた！" : "敗北..."}
                                 </h2>
-                                <button onClick={() => { setGameState('select'); setBgmActive(false); }} className="bg-white text-slate-900 px-10 py-3 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel">
-                                    タイトルへ
-                                </button>
+                                {/* 進化演出中はボタンを非表示 */}
+                                {!evolutionEffect && (
+                                    <button
+                                        onClick={() => { setGameState('select'); setBgmActive(false); }}
+                                        className="bg-white text-slate-900 px-10 py-3 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel"
+                                    >
+                                        タイトルに戻る
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

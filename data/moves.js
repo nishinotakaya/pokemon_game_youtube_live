@@ -48,7 +48,14 @@ const MOVES_DATA = {
   "ムゲンストーム": { power: 140, acc: 95, type: "dragon", effect: "eternal_storm" },
   "どくどく": { power: 0, acc: 90, type: "poison", status: "poison", effect: "poison" },
   "りゅうせいぐん": { power: 130, acc: 90, type: "dragon", effect: "dragon_meteor" },
-  "エターナルビーム": { power: 160, acc: 90, type: "dragon", effect: "eternal_beam" }
+  "エターナルビーム": { power: 160, acc: 90, type: "dragon", effect: "eternal_beam" },
+
+  // メガ進化ポケモンの技
+  "ボルテッカー": { power: 120, acc: 100, type: "electric" },
+  "でんげき": { power: 100, acc: 100, type: "electric" },
+  "コアエンサー": { power: 180, acc: 100, type: "dragon", effect: "dragon_meteor" },
+  "メガフレイム": { power: 180, acc: 100, type: "fire", effect: "beam" },
+  "メガパンチ": { power: 150, acc: 100, type: "fighting" }
 };
 
 // タイプ相性チャート

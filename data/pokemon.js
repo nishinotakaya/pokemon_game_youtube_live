@@ -48,6 +48,14 @@ const POKEMON_DATA = {
     color: "#10b981",
     moves: ["りゅうせいぐん", "はがねのつばさ", "かみなり", "だいもんじ"]
   },
+  black_rayquaza: {
+    id: 384,
+    name: "ブラックレックウザ",
+    type: "dragon",
+    hp: 160,
+    color: "#1e293b",
+    moves: ["りゅうせいぐん", "はがねのつばさ", "かみなり", "だいもんじ"]
+  },
   charizard: {
     id: 6,
     name: "リザードン",
@@ -71,6 +79,46 @@ const POKEMON_DATA = {
     hp: 160,
     color: "#a855f7",
     moves: ["ムゲンストーム", "どくどく", "りゅうせいぐん", "エターナルビーム"]
+  },
+  // 進化後のポケモン
+  raichu: {
+    id: 26,
+    name: "ライチュウ",
+    type: "electric",
+    hp: 120,
+    color: "#facc15",
+    moves: ["10まんボルト", "かみなり", "でんげき", "ボルテッカー"]
+  },
+  mega_rayquaza: {
+    id: 384,
+    name: "メガレックウザ",
+    type: "dragon",
+    hp: 180,
+    color: "#10b981",
+    moves: ["コアエンサー", "りゅうせいぐん", "かみなり", "だいもんじ"]
+  },
+  mega_charizard: {
+    id: 6,
+    name: "メガリザードン",
+    type: "fire",
+    hp: 170,
+    color: "#f97316",
+    moves: ["メガフレイム", "はかいこうせん", "ほのおのうず", "かえんほうしゃ"]
+  },
+  mega_lucario: {
+    id: 448,
+    name: "メガルカリオ",
+    type: "fighting",
+    hp: 160,
+    color: "#3b82f6",
+    moves: ["メガパンチ", "はどうだん", "きんせつパンチ", "シャドーボール"]
   }
 };
 
+// 進化マッピング
+const EVOLUTION_MAP = {
+  pikachu: { evolved: 'raichu', winsNeeded: 1 },
+  rayquaza: { evolved: 'mega_rayquaza', winsNeeded: 2 },
+  charizard: { evolved: 'mega_charizard', winsNeeded: 2 },
+  lucario: { evolved: 'mega_lucario', winsNeeded: 2 }
+};
