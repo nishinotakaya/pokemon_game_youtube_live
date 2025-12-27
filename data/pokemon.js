@@ -118,7 +118,7 @@ const POKEMON_DATA = {
 // 進化マッピング
 const EVOLUTION_MAP = {
   pikachu: { evolved: 'raichu', winsNeeded: 1 },
-  rayquaza: { evolved: 'mega_rayquaza', winsNeeded: 2 },
-  charizard: { evolved: 'mega_charizard', winsNeeded: 2 },
-  lucario: { evolved: 'mega_lucario', winsNeeded: 2 }
+  rayquaza: { evolved: 'mega_rayquaza', winsNeeded: 1 },
+  charizard: { evolved: 'mega_charizard', winsNeeded: 1 },
+  lucario: { evolved: 'mega_lucario', winsNeeded: 1 }
 };
