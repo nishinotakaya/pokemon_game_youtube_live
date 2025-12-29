@@ -596,6 +596,56 @@
                             await new Promise(r => setTimeout(r, 20));
                         }
                         await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "zeraora_plasma") {
+                        // ゼラオラのプラズマエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'zeraora_plasma',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        // プラズマアニメーション（進行を更新）
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'zeraora_plasma') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "zeraora_thunder_punch") {
+                        // ゼラオラのかみなりパンチエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'zeraora_thunder_punch',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        // かみなりパンチアニメーション（進行を更新）
+                        for (let p = 0; p <= 1; p += 0.03) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'zeraora_thunder_punch') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 25));
+                        }
+                        await new Promise(r => setTimeout(r, 400));
                     } else {
                         setActiveEffect({ type: move.type, target: isP1 ? 'p2' : 'p1' });
                     }

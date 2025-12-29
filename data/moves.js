@@ -55,7 +55,11 @@ const MOVES_DATA = {
   "でんげき": { power: 100, acc: 100, type: "electric" },
   "コアエンサー": { power: 180, acc: 100, type: "dragon", effect: "dragon_meteor" },
   "メガフレイム": { power: 180, acc: 100, type: "fire", effect: "beam" },
-  "メガパンチ": { power: 150, acc: 100, type: "fighting" }
+  "メガパンチ": { power: 150, acc: 100, type: "fighting" },
+
+  // ゼラオラの技
+  "プラズマフィスト": { power: 160, acc: 95, type: "electric", effect: "zeraora_plasma" },
+  "かみなりパンチ": { power: 140, acc: 100, type: "electric", effect: "zeraora_thunder_punch" }
 };
 
 // タイプ相性チャート

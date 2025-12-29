@@ -80,6 +80,14 @@ const POKEMON_DATA = {
     color: "#a855f7",
     moves: ["ムゲンストーム", "どくどく", "りゅうせいぐん", "エターナルビーム"]
   },
+  zeraora: {
+    id: 807,
+    name: "ゼラオラ",
+    type: "electric",
+    hp: 155,
+    color: "#facc15",
+    moves: ["プラズマフィスト", "10まんボルト", "かみなりパンチ", "ボルテッカー"]
+  },
   // 進化後のポケモン
   raichu: {
     id: 26,
