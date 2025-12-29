@@ -947,6 +947,546 @@ window.drawEffect = function (ctx, effect, targetX, targetY, width, height) {
       ctx.restore();
       break;
 
+    case 'lucario_close_combat':
+      // ルカリオのきんせつパンチエフェクト - 連続パンチ攻撃
+      ctx.save();
+      const closeCombatProgress = effect.progress !== undefined ? effect.progress : 0;
+      const closeCombatStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const closeCombatStartY = effect.startY !== undefined ? effect.startY : targetY + 50;
+      const closeCombatEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const closeCombatEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // 連続パンチの軌道（複数のパンチが連続で飛ぶ）
+      const punchCount = 5; // 5回の連続パンチ
+      for (let punchIndex = 0; punchIndex < punchCount; punchIndex++) {
+        const punchDelay = punchIndex * 0.15; // 各パンチの遅延
+        const punchProgress = Math.max(0, Math.min(1, (closeCombatProgress - punchDelay) / 0.3));
+
+        if (punchProgress > 0) {
+          // パンチの現在位置
+          const punchCurrentX = closeCombatStartX + (closeCombatEndX - closeCombatStartX) * punchProgress;
+          const punchCurrentY = closeCombatStartY + (closeCombatEndY - closeCombatStartY) * punchProgress;
+
+          // パンチのサイズ（最初のパンチが大きく、後続は少し小さく）
+          const punchSize = 50 - punchIndex * 5;
+          const punchAlpha = Math.min(1, punchProgress * 2) * (1 - punchIndex * 0.1);
+
+          // パンチの描画（光る拳）
+          const punchGradient = ctx.createRadialGradient(punchCurrentX, punchCurrentY, 0, punchCurrentX, punchCurrentY, punchSize);
+          punchGradient.addColorStop(0, `rgba(59, 130, 246, ${punchAlpha})`); // 青い光
+          punchGradient.addColorStop(0.3, `rgba(96, 165, 250, ${punchAlpha * 0.8})`);
+          punchGradient.addColorStop(0.6, `rgba(147, 197, 253, ${punchAlpha * 0.6})`);
+          punchGradient.addColorStop(1, `rgba(191, 219, 254, 0)`);
+
+          ctx.fillStyle = punchGradient;
+          ctx.shadowBlur = 30;
+          ctx.shadowColor = 'rgba(59, 130, 246, 0.8)';
+          ctx.beginPath();
+          ctx.arc(punchCurrentX, punchCurrentY, punchSize, 0, Math.PI * 2);
+          ctx.fill();
+
+          // パンチの周りの衝撃波
+          if (punchProgress > 0.5) {
+            const shockWaveSize = (punchProgress - 0.5) * 2 * 80;
+            const shockWaveAlpha = Math.max(0, (1 - punchProgress) * 0.6);
+            ctx.strokeStyle = `rgba(59, 130, 246, ${shockWaveAlpha})`;
+            ctx.lineWidth = 4;
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(punchCurrentX, punchCurrentY, punchSize + shockWaveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // パンチの軌跡（残像）
+          for (let i = 1; i <= 3; i++) {
+            const trailProgress = punchProgress - (i * 0.1);
+            if (trailProgress > 0) {
+              const trailX = closeCombatStartX + (closeCombatEndX - closeCombatStartX) * trailProgress;
+              const trailY = closeCombatStartY + (closeCombatEndY - closeCombatStartY) * trailProgress;
+              const trailAlpha = Math.max(0, 0.4 - (i * 0.1));
+              ctx.fillStyle = `rgba(59, 130, 246, ${trailAlpha})`;
+              ctx.shadowBlur = 15 * trailAlpha;
+              ctx.beginPath();
+              ctx.arc(trailX, trailY, punchSize * 0.7, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+      }
+
+      // 当たった時の爆発エフェクト（最後のパンチが当たった時）
+      if (closeCombatProgress >= 0.9) {
+        const explosionProgress = (closeCombatProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 150;
+        const explosionGradient = ctx.createRadialGradient(closeCombatEndX, closeCombatEndY, 0, closeCombatEndX, closeCombatEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(59, 130, 246, 1)');
+        explosionGradient.addColorStop(0.4, 'rgba(96, 165, 250, 0.9)');
+        explosionGradient.addColorStop(0.6, 'rgba(147, 197, 253, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(191, 219, 254, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 60;
+        ctx.shadowColor = 'rgba(59, 130, 246, 0.8)';
+        ctx.beginPath();
+        ctx.arc(closeCombatEndX, closeCombatEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 爆発のパーティクル（青い光の粒子）
+        for (let i = 0; i < 20; i++) {
+          const angle = (i / 20) * Math.PI * 2 + time / 50;
+          const radius = explosionSize * 0.8 + Math.sin(time / 30 + i) * 30;
+          const px = closeCombatEndX + Math.cos(angle) * radius;
+          const py = closeCombatEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.9 - explosionProgress);
+          ctx.fillStyle = `rgba(59, 130, 246, ${particleAlpha})`;
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(px, py, 5 + Math.sin(time / 40 + i) * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'lucario_drain_punch':
+      // ルカリオのドレインパンチエフェクト - エネルギーを吸収するパンチ
+      ctx.save();
+      const drainPunchProgress = effect.progress !== undefined ? effect.progress : 0;
+      const drainPunchStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const drainPunchStartY = effect.startY !== undefined ? effect.startY : targetY + 50;
+      const drainPunchEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const drainPunchEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // パンチの軌道
+      const drainPunchCurrentX = drainPunchStartX + (drainPunchEndX - drainPunchStartX) * drainPunchProgress;
+      const drainPunchCurrentY = drainPunchStartY + (drainPunchEndY - drainPunchStartY) * drainPunchProgress;
+
+      // パンチの描画（緑色のエネルギーをまとった拳）
+      const drainPunchSize = 45 + Math.sin(time / 60) * 5;
+      const drainPunchGradient = ctx.createRadialGradient(drainPunchCurrentX, drainPunchCurrentY, 0, drainPunchCurrentX, drainPunchCurrentY, drainPunchSize);
+      drainPunchGradient.addColorStop(0, 'rgba(34, 197, 94, 1)'); // 緑色の光
+      drainPunchGradient.addColorStop(0.3, 'rgba(74, 222, 128, 0.9)');
+      drainPunchGradient.addColorStop(0.6, 'rgba(134, 239, 172, 0.7)');
+      drainPunchGradient.addColorStop(1, 'rgba(187, 247, 208, 0)');
+
+      ctx.fillStyle = drainPunchGradient;
+      ctx.shadowBlur = 35;
+      ctx.shadowColor = 'rgba(34, 197, 94, 0.8)';
+      ctx.beginPath();
+      ctx.arc(drainPunchCurrentX, drainPunchCurrentY, drainPunchSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // パンチの周りのエネルギーリング
+      for (let i = 0; i < 3; i++) {
+        const ringProgress = drainPunchProgress - (i * 0.1);
+        if (ringProgress > 0) {
+          const ringSize = drainPunchSize + 15 + i * 10;
+          const ringAlpha = Math.max(0, (1 - ringProgress) * 0.5);
+          ctx.strokeStyle = `rgba(34, 197, 94, ${ringAlpha})`;
+          ctx.lineWidth = 3;
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.arc(drainPunchCurrentX, drainPunchCurrentY, ringSize, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // パンチからターゲットへのエネルギー吸収ライン（ドレイン効果）
+      if (drainPunchProgress > 0.3) {
+        const drainLineAlpha = Math.min(1, (drainPunchProgress - 0.3) / 0.4) * 0.6;
+        const drainLineGradient = ctx.createLinearGradient(drainPunchEndX, drainPunchEndY, drainPunchCurrentX, drainPunchCurrentY);
+        drainLineGradient.addColorStop(0, `rgba(34, 197, 94, ${drainLineAlpha})`);
+        drainLineGradient.addColorStop(0.5, `rgba(74, 222, 128, ${drainLineAlpha * 0.8})`);
+        drainLineGradient.addColorStop(1, `rgba(34, 197, 94, 0)`);
+
+        ctx.strokeStyle = drainLineGradient;
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.moveTo(drainPunchEndX, drainPunchEndY);
+        ctx.lineTo(drainPunchCurrentX, drainPunchCurrentY);
+        ctx.stroke();
+
+        // エネルギー粒子が流れる
+        for (let i = 0; i < 8; i++) {
+          const particleProgress = (drainPunchProgress - 0.3) / 0.7;
+          const particleOffset = (i / 8) * 0.5;
+          const particlePos = (particleProgress + particleOffset) % 1;
+          const particleX = drainPunchEndX + (drainPunchCurrentX - drainPunchEndX) * particlePos;
+          const particleY = drainPunchEndY + (drainPunchCurrentY - drainPunchEndY) * particlePos;
+
+          ctx.fillStyle = `rgba(34, 197, 94, ${drainLineAlpha})`;
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(particleX, particleY, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // パンチの軌跡（残像）
+      for (let i = 1; i <= 4; i++) {
+        const trailProgress = drainPunchProgress - (i * 0.08);
+        if (trailProgress > 0) {
+          const trailX = drainPunchStartX + (drainPunchEndX - drainPunchStartX) * trailProgress;
+          const trailY = drainPunchStartY + (drainPunchEndY - drainPunchStartY) * trailProgress;
+          const trailAlpha = Math.max(0, 0.5 - (i * 0.1));
+          ctx.fillStyle = `rgba(34, 197, 94, ${trailAlpha})`;
+          ctx.shadowBlur = 20 * trailAlpha;
+          ctx.beginPath();
+          ctx.arc(trailX, trailY, drainPunchSize * 0.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 当たった時の爆発エフェクト
+      if (drainPunchProgress >= 0.9) {
+        const explosionProgress = (drainPunchProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 120;
+        const explosionGradient = ctx.createRadialGradient(drainPunchEndX, drainPunchEndY, 0, drainPunchEndX, drainPunchEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(34, 197, 94, 1)');
+        explosionGradient.addColorStop(0.4, 'rgba(74, 222, 128, 0.9)');
+        explosionGradient.addColorStop(0.6, 'rgba(134, 239, 172, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(187, 247, 208, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 50;
+        ctx.shadowColor = 'rgba(34, 197, 94, 0.8)';
+        ctx.beginPath();
+        ctx.arc(drainPunchEndX, drainPunchEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 爆発のパーティクル（緑色の光の粒子）
+        for (let i = 0; i < 15; i++) {
+          const angle = (i / 15) * Math.PI * 2 + time / 40;
+          const radius = explosionSize * 0.7 + Math.sin(time / 25 + i) * 25;
+          const px = drainPunchEndX + Math.cos(angle) * radius;
+          const py = drainPunchEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.9 - explosionProgress);
+          ctx.fillStyle = `rgba(34, 197, 94, ${particleAlpha})`;
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.arc(px, py, 4 + Math.sin(time / 35 + i) * 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // エネルギー吸収のエフェクト（ターゲットからパンチへ）
+        const absorbProgress = Math.min(1, explosionProgress * 1.5);
+        if (absorbProgress < 1) {
+          const absorbStartX = drainPunchEndX;
+          const absorbStartY = drainPunchEndY;
+          const absorbEndX = drainPunchStartX;
+          const absorbEndY = drainPunchStartY;
+          const absorbCurrentX = absorbStartX + (absorbEndX - absorbStartX) * absorbProgress;
+          const absorbCurrentY = absorbStartY + (absorbEndY - absorbStartY) * absorbProgress;
+
+          const absorbGradient = ctx.createLinearGradient(absorbStartX, absorbStartY, absorbCurrentX, absorbCurrentY);
+          absorbGradient.addColorStop(0, `rgba(34, 197, 94, ${0.8 * (1 - absorbProgress)})`);
+          absorbGradient.addColorStop(1, `rgba(34, 197, 94, 0)`);
+
+          ctx.strokeStyle = absorbGradient;
+          ctx.lineWidth = 6;
+          ctx.shadowBlur = 25;
+          ctx.beginPath();
+          ctx.moveTo(absorbStartX, absorbStartY);
+          ctx.lineTo(absorbCurrentX, absorbCurrentY);
+          ctx.stroke();
+
+          // 吸収されるエネルギー粒子
+          for (let i = 0; i < 5; i++) {
+            const particlePos = (absorbProgress + (i / 5) * 0.3) % 1;
+            const particleX = absorbStartX + (absorbEndX - absorbStartX) * particlePos;
+            const particleY = absorbStartY + (absorbEndY - absorbStartY) * particlePos;
+
+            ctx.fillStyle = `rgba(34, 197, 94, ${0.9 * (1 - absorbProgress)})`;
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(particleX, particleY, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'aura_sphere':
+      // はどうだんのエフェクト - 波動が広がるエネルギー弾
+      ctx.save();
+      const auraProgress = effect.progress !== undefined ? effect.progress : 0;
+      const auraStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const auraStartY = effect.startY !== undefined ? effect.startY : targetY;
+      const auraEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const auraEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // 波動弾の軌道
+      const auraCurrentX = auraStartX + (auraEndX - auraStartX) * auraProgress;
+      const auraCurrentY = auraStartY + (auraEndY - auraStartY) * auraProgress;
+
+      // 波動弾の本体（青いエネルギー球）
+      const auraSize = 40 + Math.sin(time / 80) * 5;
+      const auraGradient = ctx.createRadialGradient(auraCurrentX, auraCurrentY, 0, auraCurrentX, auraCurrentY, auraSize);
+      auraGradient.addColorStop(0, 'rgba(59, 130, 246, 1)'); // 青い光
+      auraGradient.addColorStop(0.2, 'rgba(96, 165, 250, 0.95)');
+      auraGradient.addColorStop(0.4, 'rgba(147, 197, 253, 0.85)');
+      auraGradient.addColorStop(0.6, 'rgba(191, 219, 254, 0.7)');
+      auraGradient.addColorStop(1, 'rgba(219, 234, 254, 0)');
+
+      ctx.fillStyle = auraGradient;
+      ctx.shadowBlur = 40;
+      ctx.shadowColor = 'rgba(59, 130, 246, 0.9)';
+      ctx.beginPath();
+      ctx.arc(auraCurrentX, auraCurrentY, auraSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 波動のリング（複数のリングが広がる）
+      for (let i = 0; i < 4; i++) {
+        const ringProgress = auraProgress - (i * 0.15);
+        if (ringProgress > 0) {
+          const ringSize = auraSize + 20 + i * 15;
+          const ringAlpha = Math.max(0, (1 - ringProgress) * 0.6);
+          ctx.strokeStyle = `rgba(59, 130, 246, ${ringAlpha})`;
+          ctx.lineWidth = 4 - i * 0.5;
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(auraCurrentX, auraCurrentY, ringSize, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // 波動のエネルギー粒子（周囲に散らばる）
+      for (let i = 0; i < 12; i++) {
+        const particleAngle = (i / 12) * Math.PI * 2 + time / 100;
+        const particleRadius = auraSize + 30 + Math.sin(time / 60 + i) * 15;
+        const particleX = auraCurrentX + Math.cos(particleAngle) * particleRadius;
+        const particleY = auraCurrentY + Math.sin(particleAngle) * particleRadius;
+
+        const particleAlpha = 0.7 + Math.sin(time / 50 + i) * 0.3;
+        ctx.fillStyle = `rgba(59, 130, 246, ${particleAlpha})`;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(particleX, particleY, 6 + Math.sin(time / 70 + i) * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 波動弾の軌跡（残像）
+      for (let i = 1; i <= 5; i++) {
+        const trailProgress = auraProgress - (i * 0.1);
+        if (trailProgress > 0) {
+          const trailX = auraStartX + (auraEndX - auraStartX) * trailProgress;
+          const trailY = auraStartY + (auraEndY - auraStartY) * trailProgress;
+          const trailAlpha = Math.max(0, 0.5 - (i * 0.1));
+          ctx.fillStyle = `rgba(59, 130, 246, ${trailAlpha})`;
+          ctx.shadowBlur = 20 * trailAlpha;
+          ctx.beginPath();
+          ctx.arc(trailX, trailY, auraSize * 0.7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 当たった時の爆発エフェクト（波動が広がる）
+      if (auraProgress >= 0.9) {
+        const explosionProgress = (auraProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 130;
+
+        // 中央の爆発
+        const explosionGradient = ctx.createRadialGradient(auraEndX, auraEndY, 0, auraEndX, auraEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(59, 130, 246, 1)');
+        explosionGradient.addColorStop(0.4, 'rgba(96, 165, 250, 0.9)');
+        explosionGradient.addColorStop(0.6, 'rgba(147, 197, 253, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(191, 219, 254, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 60;
+        ctx.shadowColor = 'rgba(59, 130, 246, 0.8)';
+        ctx.beginPath();
+        ctx.arc(auraEndX, auraEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 広がる波動のリング（複数）
+        for (let i = 0; i < 5; i++) {
+          const waveProgress = explosionProgress - (i * 0.15);
+          if (waveProgress > 0) {
+            const waveSize = explosionSize * 0.5 + i * 20;
+            const waveAlpha = Math.max(0, (1 - waveProgress) * 0.7);
+            ctx.strokeStyle = `rgba(59, 130, 246, ${waveAlpha})`;
+            ctx.lineWidth = 5 - i * 0.5;
+            ctx.shadowBlur = 25;
+            ctx.beginPath();
+            ctx.arc(auraEndX, auraEndY, waveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
+        // 爆発のパーティクル（青い光の粒子）
+        for (let i = 0; i < 25; i++) {
+          const angle = (i / 25) * Math.PI * 2 + time / 50;
+          const radius = explosionSize * 0.8 + Math.sin(time / 30 + i) * 35;
+          const px = auraEndX + Math.cos(angle) * radius;
+          const py = auraEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.9 - explosionProgress);
+          ctx.fillStyle = `rgba(59, 130, 246, ${particleAlpha})`;
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(px, py, 6 + Math.sin(time / 40 + i) * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'mega_punch':
+      // メガパンチのエフェクト - 超強力なパンチ攻撃
+      ctx.save();
+      const megaPunchProgress = effect.progress !== undefined ? effect.progress : 0;
+      const megaPunchStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const megaPunchStartY = effect.startY !== undefined ? effect.startY : targetY + 50;
+      const megaPunchEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const megaPunchEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // パンチの軌道
+      const megaPunchCurrentX = megaPunchStartX + (megaPunchEndX - megaPunchStartX) * megaPunchProgress;
+      const megaPunchCurrentY = megaPunchStartY + (megaPunchEndY - megaPunchStartY) * megaPunchProgress;
+
+      // パンチの描画（巨大な光る拳）
+      if (megaPunchProgress < 0.9) {
+        const fistSize = 60 + Math.sin(time / 50) * 8;
+        const fistGradient = ctx.createRadialGradient(megaPunchCurrentX, megaPunchCurrentY, 0, megaPunchCurrentX, megaPunchCurrentY, fistSize);
+        fistGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        fistGradient.addColorStop(0.2, 'rgba(255, 200, 0, 1)');
+        fistGradient.addColorStop(0.4, 'rgba(255, 100, 0, 0.95)');
+        fistGradient.addColorStop(0.6, 'rgba(239, 68, 68, 0.9)');
+        fistGradient.addColorStop(1, 'rgba(220, 38, 38, 0)');
+
+        ctx.fillStyle = fistGradient;
+        ctx.shadowBlur = 50;
+        ctx.shadowColor = 'rgba(255, 200, 0, 0.9)';
+        ctx.beginPath();
+        ctx.arc(megaPunchCurrentX, megaPunchCurrentY, fistSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 拳の周りの強力なエネルギーリング
+        for (let i = 0; i < 5; i++) {
+          const ringSize = fistSize + 15 + i * 12;
+          const ringAlpha = 0.7 - i * 0.15;
+          ctx.strokeStyle = `rgba(255, 200, 0, ${ringAlpha})`;
+          ctx.lineWidth = 5 - i * 0.5;
+          ctx.shadowBlur = 25;
+          ctx.beginPath();
+          ctx.arc(megaPunchCurrentX, megaPunchCurrentY, ringSize, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // 拳の周りのエネルギー粒子（激しく回転）
+        for (let i = 0; i < 16; i++) {
+          const particleAngle = (i / 16) * Math.PI * 2 + time / 40;
+          const particleRadius = fistSize + 25 + Math.sin(time / 50 + i) * 20;
+          const particleX = megaPunchCurrentX + Math.cos(particleAngle) * particleRadius;
+          const particleY = megaPunchCurrentY + Math.sin(particleAngle) * particleRadius;
+
+          const particleAlpha = 0.8 + Math.sin(time / 30 + i) * 0.2;
+          ctx.fillStyle = `rgba(255, 200, 0, ${particleAlpha})`;
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(particleX, particleY, 8 + Math.sin(time / 60 + i) * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // パンチの軌跡（強力な残像）
+      for (let i = 1; i <= 6; i++) {
+        const trailProgress = megaPunchProgress - (i * 0.08);
+        if (trailProgress > 0) {
+          const trailX = megaPunchStartX + (megaPunchEndX - megaPunchStartX) * trailProgress;
+          const trailY = megaPunchStartY + (megaPunchEndY - megaPunchStartY) * trailProgress;
+          const trailAlpha = Math.max(0, 0.6 - (i * 0.1));
+          const trailSize = 60 - i * 3;
+          ctx.fillStyle = `rgba(255, 200, 0, ${trailAlpha})`;
+          ctx.shadowBlur = 30 * trailAlpha;
+          ctx.beginPath();
+          ctx.arc(trailX, trailY, trailSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 当たった時の超強力な爆発エフェクト
+      if (megaPunchProgress >= 0.9) {
+        const explosionProgress = (megaPunchProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 180;
+
+        // 中央の超強力な爆発
+        const explosionGradient = ctx.createRadialGradient(megaPunchEndX, megaPunchEndY, 0, megaPunchEndX, megaPunchEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.15, 'rgba(255, 255, 200, 1)');
+        explosionGradient.addColorStop(0.3, 'rgba(255, 200, 0, 1)');
+        explosionGradient.addColorStop(0.5, 'rgba(255, 100, 0, 0.95)');
+        explosionGradient.addColorStop(0.7, 'rgba(239, 68, 68, 0.9)');
+        explosionGradient.addColorStop(1, 'rgba(220, 38, 38, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 80;
+        ctx.shadowColor = 'rgba(255, 200, 0, 0.9)';
+        ctx.beginPath();
+        ctx.arc(megaPunchEndX, megaPunchEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 広がる衝撃波（複数）
+        for (let i = 0; i < 6; i++) {
+          const shockWaveProgress = explosionProgress - (i * 0.12);
+          if (shockWaveProgress > 0) {
+            const shockWaveSize = explosionSize * 0.4 + i * 25;
+            const shockWaveAlpha = Math.max(0, (1 - shockWaveProgress) * 0.8);
+            ctx.strokeStyle = `rgba(255, 200, 0, ${shockWaveAlpha})`;
+            ctx.lineWidth = 6 - i * 0.5;
+            ctx.shadowBlur = 30;
+            ctx.beginPath();
+            ctx.arc(megaPunchEndX, megaPunchEndY, shockWaveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
+        // 爆発のパーティクル（多数の光の粒子）
+        for (let i = 0; i < 30; i++) {
+          const angle = (i / 30) * Math.PI * 2 + time / 40;
+          const radius = explosionSize * 0.9 + Math.sin(time / 25 + i) * 40;
+          const px = megaPunchEndX + Math.cos(angle) * radius;
+          const py = megaPunchEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.95 - explosionProgress);
+          ctx.fillStyle = `rgba(255, 200, 0, ${particleAlpha})`;
+          ctx.shadowBlur = 25;
+          ctx.beginPath();
+          ctx.arc(px, py, 8 + Math.sin(time / 50 + i) * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 中心の強力な光
+        const coreSize = explosionSize * 0.3;
+        const coreGradient = ctx.createRadialGradient(megaPunchEndX, megaPunchEndY, 0, megaPunchEndX, megaPunchEndY, coreSize);
+        coreGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        coreGradient.addColorStop(0.5, 'rgba(255, 255, 200, 0.9)');
+        coreGradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+        ctx.fillStyle = coreGradient;
+        ctx.shadowBlur = 70;
+        ctx.beginPath();
+        ctx.arc(megaPunchEndX, megaPunchEndY, coreSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
     default:
       break;
   }

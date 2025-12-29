@@ -40,9 +40,9 @@ const MOVES_DATA = {
 
   // ルカリオの技
   "シャドーボール": { power: 120, acc: 100, type: "ghost", effect: "shadow_ball" },
-  "はどうだん": { power: 110, acc: 95, type: "fighting" },
-  "きんせつパンチ": { power: 100, acc: 100, type: "fighting" },
-  "ドレインパンチ": { power: 95, acc: 100, type: "fighting" },
+  "はどうだん": { power: 110, acc: 95, type: "fighting", effect: "aura_sphere" },
+  "きんせつパンチ": { power: 100, acc: 100, type: "fighting", effect: "lucario_close_combat" },
+  "ドレインパンチ": { power: 95, acc: 100, type: "fighting", effect: "lucario_drain_punch" },
 
   // ムゲンダイナの技
   "ムゲンストーム": { power: 140, acc: 95, type: "dragon", effect: "eternal_storm" },
@@ -55,7 +55,7 @@ const MOVES_DATA = {
   "でんげき": { power: 100, acc: 100, type: "electric" },
   "コアエンサー": { power: 180, acc: 100, type: "dragon", effect: "dragon_meteor" },
   "メガフレイム": { power: 180, acc: 100, type: "fire", effect: "beam" },
-  "メガパンチ": { power: 150, acc: 100, type: "fighting" },
+  "メガパンチ": { power: 150, acc: 100, type: "fighting", effect: "mega_punch" },
 
   // ゼラオラの技
   "プラズマフィスト": { power: 160, acc: 95, type: "electric", effect: "zeraora_plasma" },
