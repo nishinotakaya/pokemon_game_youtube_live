@@ -104,6 +104,7 @@
             const [evolutionEffect, setEvolutionEffect] = useState(null); // 進化演出用
             const [evolutionComplete, setEvolutionComplete] = useState(null); // 進化完了後の表示用
             const [megaScizorFrontImageUrl, setMegaScizorFrontImageUrl] = useState(null); // メガハッサム表画像のURL（背景透過処理済み）
+            const [searchKeyword, setSearchKeyword] = useState(''); // ポケモン検索キーワード
 
             const canvasRef = useRef(null);
             const imagesRef = useRef({ p1: new Image(), p2: new Image() });
@@ -1114,24 +1115,201 @@
 
             // --- UI Components ---
             if (gameState === 'select') {
+                // タイプを日本語に変換する関数
+                const getTypeNameJP = (type) => {
+                    const typeMap = {
+                        'electric': 'でんき',
+                        'water': 'みず',
+                        'fire': 'ほのお',
+                        'bug': 'むし',
+                        'flying': 'ひこう',
+                        'steel': 'はがね',
+                        'dragon': 'ドラゴン',
+                        'fighting': 'かくとう',
+                        'ghost': 'ゴースト',
+                        'psychic': 'エスパー',
+                        'poison': 'どく',
+                        'normal': 'ノーマル'
+                    };
+                    return typeMap[type] || type;
+                };
+
+                // ひらがなとカタカナを相互変換する関数
+                const toHiragana = (str) => {
+                    return str.replace(/[ァ-ヶ]/g, (char) => {
+                        return String.fromCharCode(char.charCodeAt(0) - 0x60);
+                    });
+                };
+                const toKatakana = (str) => {
+                    return str.replace(/[ぁ-ゖ]/g, (char) => {
+                        return String.fromCharCode(char.charCodeAt(0) + 0x60);
+                    });
+                };
+                // ひらがな・カタカナを統一して比較する関数
+                const normalizeKana = (str) => {
+                    // 小文字に変換してから、ひらがなに統一
+                    return toHiragana(str.toLowerCase());
+                };
+
+                // 検索フィルタリング関数
+                const filterPokemon = (key, data, displayKey, displayData) => {
+                    if (!searchKeyword.trim()) return true;
+                    const keyword = normalizeKana(searchKeyword.trim());
+                    const pokemonName = normalizeKana((displayData || data).name);
+                    const pokemonType = normalizeKana((displayData || data).type);
+                    const pokemonTypeJP = normalizeKana(getTypeNameJP((displayData || data).type));
+                    // ひらがな・カタカナを統一して検索（英語タイプ名と日本語タイプ名の両方で検索可能）
+                    return pokemonName.includes(keyword) || pokemonType.includes(keyword) || pokemonTypeJP.includes(keyword);
+                };
+
                 return (
                     <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel flex flex-col max-h-[90vh] md:max-h-[85vh]">
                         <div className="p-4 md:p-6 pb-2 md:pb-4 flex-shrink-0">
-                            <h1 className="text-2xl md:text-3xl text-center text-yellow-400 drop-shadow-md">ポケモンを えらぼう！</h1>
+                            <h1 className="text-2xl md:text-3xl text-center text-yellow-400 drop-shadow-md mb-4">ポケモンを えらぼう！</h1>
+                            {/* 検索入力欄 */}
+                            <div className="flex items-center justify-center mb-2">
+                                <input
+                                    type="text"
+                                    value={searchKeyword}
+                                    onChange={(e) => setSearchKeyword(e.target.value)}
+                                    placeholder="ポケモン名やタイプで検索..."
+                                    className="w-full max-w-md px-4 py-2 bg-slate-700 border-2 border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-yellow-400 transition-all font-pixel text-sm md:text-base"
+                                />
+                            </div>
+                            {searchKeyword && (
+                                <div className="text-center text-sm text-slate-400 mb-2">
+                                    検索中: "{searchKeyword}"
+                                </div>
+                            )}
                         </div>
                         <div className="overflow-y-auto px-4 md:px-6 pb-4 md:pb-6 flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {Object.entries(POKEMON_DATA).map(([key, data]) => {
+                            {(() => {
+                                // 表示されるポケモンの数をカウント
+                                let visibleCount = 0;
+                                Object.entries(POKEMON_DATA).forEach(([key, data]) => {
                                     const evolvedKeys = Object.values(EVOLUTION_MAP).map(e => e.evolved);
-
-                                    // 進化系のポケモンで、対応する進化前のポケモンが進化済みの場合は表示
                                     if (evolvedKeys.includes(key)) {
-                                        // この進化系ポケモンに対応する進化前のポケモンを探す
                                         const baseKey = Object.keys(EVOLUTION_MAP).find(k => EVOLUTION_MAP[k].evolved === key);
                                         if (baseKey && isEvolved(baseKey)) {
-                                            // 進化済みなので進化後のポケモンを表示
-                                            let imageUrl = getMegaPokemonImageUrl(key, megaScizorFrontImageUrl);
-                                            if (!imageUrl) {
+                                            if (filterPokemon(key, data, null, data)) visibleCount++;
+                                        }
+                                    } else if (EVOLUTION_MAP[key] && !isEvolved(key)) {
+                                        const displayKey = getEvolvedKey(key);
+                                        const displayData = POKEMON_DATA[displayKey] || data;
+                                        if (filterPokemon(key, data, displayKey, displayData)) visibleCount++;
+                                    } else if (!EVOLUTION_MAP[key] || !isEvolved(key)) {
+                                        if (filterPokemon(key, data, null, data)) visibleCount++;
+                                    }
+                                });
+
+                                if (visibleCount === 0 && searchKeyword.trim()) {
+                                    return (
+                                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                                            <div className="text-2xl text-slate-400 mb-2">検索結果が見つかりませんでした</div>
+                                            <div className="text-sm text-slate-500">別のキーワードで検索してみてください</div>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        {Object.entries(POKEMON_DATA).map(([key, data]) => {
+                                            const evolvedKeys = Object.values(EVOLUTION_MAP).map(e => e.evolved);
+
+                                            // 進化系のポケモンで、対応する進化前のポケモンが進化済みの場合は表示
+                                            if (evolvedKeys.includes(key)) {
+                                                // この進化系ポケモンに対応する進化前のポケモンを探す
+                                                const baseKey = Object.keys(EVOLUTION_MAP).find(k => EVOLUTION_MAP[k].evolved === key);
+                                                if (baseKey && isEvolved(baseKey)) {
+                                                    // 検索フィルタリング
+                                                    if (!filterPokemon(key, data, null, data)) {
+                                                        return null;
+                                                    }
+                                                    // 進化済みなので進化後のポケモンを表示
+                                                    let imageUrl = getMegaPokemonImageUrl(key, megaScizorFrontImageUrl);
+                                                    if (!imageUrl) {
+                                                        imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`;
+                                                    }
+
+                                                    return (
+                                                        <button
+                                                            key={key}
+                                                            onClick={() => {
+                                                                const allKeys = Object.keys(POKEMON_DATA).filter(k => {
+                                                                    if (evolvedKeys.includes(k)) {
+                                                                        const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
+                                                                        return baseK && isEvolved(baseK) ? k !== key : false;
+                                                                    }
+                                                                    const evoKey = getEvolvedKey(k);
+                                                                    return evoKey !== key;
+                                                                });
+                                                                const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
+                                                                startBattle(key, randomKey);
+                                                            }}
+                                                            className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative"
+                                                        >
+                                                            <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
+                                                            <span className="text-xl mt-2">{data.name}</span>
+                                                            <span className="text-xs text-slate-400">{getTypeNameJP(data.type)}タイプ</span>
+                                                        </button>
+                                                    );
+                                                }
+                                                return null;
+                                            }
+
+                                            // 進化前のポケモンで、進化済みの場合はスキップ（進化後のポケモンが表示されるため）
+                                            if (EVOLUTION_MAP[key] && isEvolved(key)) {
+                                                return null;
+                                            }
+
+                                            // 進化前のポケモンで未進化の場合のみ表示
+                                            if (EVOLUTION_MAP[key] && !isEvolved(key)) {
+                                                const displayKey = getEvolvedKey(key);
+                                                const displayData = POKEMON_DATA[displayKey] || data;
+                                                // 検索フィルタリング
+                                                if (!filterPokemon(key, data, displayKey, displayData)) {
+                                                    return null;
+                                                }
+                                                // メガポケモンの画像URL取得
+                                                let imageUrl = getMegaPokemonImageUrl(displayKey, megaScizorFrontImageUrl);
+                                                if (!imageUrl) {
+                                                    imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${displayData.id}.png`;
+                                                }
+
+                                                return (
+                                                    <button
+                                                        key={key}
+                                                        onClick={() => {
+                                                            const allKeys = Object.keys(POKEMON_DATA).filter(k => {
+                                                                if (evolvedKeys.includes(k)) {
+                                                                    const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
+                                                                    return baseK && isEvolved(baseK) ? k !== displayKey : false;
+                                                                }
+                                                                const evoKey = getEvolvedKey(k);
+                                                                return evoKey !== displayKey;
+                                                            });
+                                                            const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
+                                                            startBattle(displayKey, randomKey);
+                                                        }}
+                                                        className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative"
+                                                    >
+                                                        <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
+                                                        <span className="text-xl mt-2">{displayData.name}</span>
+                                                        <span className="text-xs text-slate-400">{getTypeNameJP(displayData.type)}タイプ</span>
+                                                    </button>
+                                                );
+                                            }
+
+                                            // 進化できないポケモンはそのまま表示
+                                            // 検索フィルタリング
+                                            if (!filterPokemon(key, data, null, data)) {
+                                                return null;
+                                            }
+                                            // ブラックレックウザは特別な画像を使用
+                                            let imageUrl;
+                                            if (key === 'black_rayquaza') {
+                                                imageUrl = 'https://img.pokemondb.net/sprites/black-white/shiny/rayquaza.png';
+                                            } else {
                                                 imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`;
                                             }
 
@@ -1150,89 +1328,17 @@
                                                         const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
                                                         startBattle(key, randomKey);
                                                     }}
-                                                    className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative"
+                                                    className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center"
                                                 >
                                                     <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
                                                     <span className="text-xl mt-2">{data.name}</span>
-                                                    <span className="text-xs text-slate-400 uppercase">{data.type} TYPE</span>
+                                                    <span className="text-xs text-slate-400">{getTypeNameJP(data.type)}タイプ</span>
                                                 </button>
                                             );
-                                        }
-                                        return null;
-                                    }
-
-                                    // 進化前のポケモンで、進化済みの場合はスキップ（進化後のポケモンが表示されるため）
-                                    if (EVOLUTION_MAP[key] && isEvolved(key)) {
-                                        return null;
-                                    }
-
-                                    // 進化前のポケモンで未進化の場合のみ表示
-                                    if (EVOLUTION_MAP[key] && !isEvolved(key)) {
-                                        const displayKey = getEvolvedKey(key);
-                                        const displayData = POKEMON_DATA[displayKey] || data;
-                                        // メガポケモンの画像URL取得
-                                        let imageUrl = getMegaPokemonImageUrl(displayKey, megaScizorFrontImageUrl);
-                                        if (!imageUrl) {
-                                            imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${displayData.id}.png`;
-                                        }
-
-                                        return (
-                                            <button
-                                                key={key}
-                                                onClick={() => {
-                                                    const allKeys = Object.keys(POKEMON_DATA).filter(k => {
-                                                        if (evolvedKeys.includes(k)) {
-                                                            const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
-                                                            return baseK && isEvolved(baseK) ? k !== displayKey : false;
-                                                        }
-                                                        const evoKey = getEvolvedKey(k);
-                                                        return evoKey !== displayKey;
-                                                    });
-                                                    const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
-                                                    startBattle(displayKey, randomKey);
-                                                }}
-                                                className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative"
-                                            >
-                                                <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
-                                                <span className="text-xl mt-2">{displayData.name}</span>
-                                                <span className="text-xs text-slate-400 uppercase">{displayData.type} TYPE</span>
-                                            </button>
-                                        );
-                                    }
-
-                                    // 進化できないポケモンはそのまま表示
-                                    // ブラックレックウザは特別な画像を使用
-                                    let imageUrl;
-                                    if (key === 'black_rayquaza') {
-                                        imageUrl = 'https://img.pokemondb.net/sprites/black-white/shiny/rayquaza.png';
-                                    } else {
-                                        imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`;
-                                    }
-
-                                    return (
-                                        <button
-                                            key={key}
-                                            onClick={() => {
-                                                const allKeys = Object.keys(POKEMON_DATA).filter(k => {
-                                                    if (evolvedKeys.includes(k)) {
-                                                        const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
-                                                        return baseK && isEvolved(baseK) ? k !== key : false;
-                                                    }
-                                                    const evoKey = getEvolvedKey(k);
-                                                    return evoKey !== key;
-                                                });
-                                                const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
-                                                startBattle(key, randomKey);
-                                            }}
-                                            className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center"
-                                        >
-                                            <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
-                                            <span className="text-xl mt-2">{data.name}</span>
-                                            <span className="text-xs text-slate-400 uppercase">{data.type} TYPE</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                                        })}
+                                    </div>
+                                );
+                            })()}
                             {/* 進化済みのポケモンがある場合のみリセットボタンを表示（進化演出中は非表示） */}
                             {Object.keys(EVOLUTION_MAP).some(key => isEvolved(key)) && !evolutionEffect && (
                                 <div className="mt-4 flex justify-center">
