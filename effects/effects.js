@@ -794,6 +794,159 @@ window.drawEffect = function (ctx, effect, targetX, targetY, width, height) {
       ctx.restore();
       break;
 
+    case 'zapdos_thunder_bolt':
+      // サンダーのでんじほうエフェクト - 強力な雷のビーム
+      ctx.save();
+      const thunderBoltProgress = effect.progress !== undefined ? effect.progress : 0;
+      const thunderBoltStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const thunderBoltStartY = effect.startY !== undefined ? effect.startY : targetY - 100;
+      const thunderBoltEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const thunderBoltEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // 雷のビームの軌道
+      const thunderBoltCurrentX = thunderBoltStartX + (thunderBoltEndX - thunderBoltStartX) * thunderBoltProgress;
+      const thunderBoltCurrentY = thunderBoltStartY + (thunderBoltEndY - thunderBoltStartY) * thunderBoltProgress;
+
+      // メインの雷ビーム（太くて強力）
+      const beamWidth = 30 + Math.sin(time / 50) * 5;
+      const thunderBoltGradient = ctx.createLinearGradient(
+        thunderBoltStartX, thunderBoltStartY,
+        thunderBoltCurrentX, thunderBoltCurrentY
+      );
+      thunderBoltGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      thunderBoltGradient.addColorStop(0.2, 'rgba(255, 255, 150, 1)');
+      thunderBoltGradient.addColorStop(0.4, 'rgba(255, 255, 0, 1)');
+      thunderBoltGradient.addColorStop(0.6, 'rgba(255, 200, 0, 0.9)');
+      thunderBoltGradient.addColorStop(0.8, 'rgba(255, 150, 0, 0.8)');
+      thunderBoltGradient.addColorStop(1, 'rgba(255, 100, 0, 0.6)');
+
+      ctx.strokeStyle = thunderBoltGradient;
+      ctx.lineWidth = beamWidth;
+      ctx.shadowBlur = 40;
+      ctx.shadowColor = '#ffff00';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // ジグザグの雷のパス
+      ctx.beginPath();
+      ctx.moveTo(thunderBoltStartX, thunderBoltStartY);
+      const segments = 15;
+      for (let i = 1; i <= segments; i++) {
+        const segmentProgress = i / segments;
+        const baseX = thunderBoltStartX + (thunderBoltCurrentX - thunderBoltStartX) * segmentProgress;
+        const baseY = thunderBoltStartY + (thunderBoltCurrentY - thunderBoltStartY) * segmentProgress;
+        // ジグザグのオフセット
+        const zigzagX = baseX + (Math.random() - 0.5) * 30 * (1 - segmentProgress * 0.5);
+        const zigzagY = baseY + (Math.random() - 0.5) * 30 * (1 - segmentProgress * 0.5);
+        ctx.lineTo(zigzagX, zigzagY);
+      }
+      ctx.stroke();
+
+      // 周囲の小さな稲妻（複数本）
+      for (let i = 0; i < 8; i++) {
+        const branchProgress = thunderBoltProgress;
+        const branchAngle = (i / 8) * Math.PI * 2 + time / 100;
+        const branchLength = 40 + Math.sin(time / 60 + i) * 20;
+        const branchX = thunderBoltCurrentX + Math.cos(branchAngle) * branchLength;
+        const branchY = thunderBoltCurrentY + Math.sin(branchAngle) * branchLength;
+
+        ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.moveTo(thunderBoltCurrentX, thunderBoltCurrentY);
+        // 小さなジグザグ
+        for (let j = 1; j <= 3; j++) {
+          const branchSegX = thunderBoltCurrentX + (branchX - thunderBoltCurrentX) * (j / 3) + (Math.random() - 0.5) * 10;
+          const branchSegY = thunderBoltCurrentY + (branchY - thunderBoltCurrentY) * (j / 3) + (Math.random() - 0.5) * 10;
+          ctx.lineTo(branchSegX, branchSegY);
+        }
+        ctx.stroke();
+      }
+
+      // 雷の軌跡（残像）
+      for (let i = 1; i <= 5; i++) {
+        const trailProgress = thunderBoltProgress - (i * 0.08);
+        if (trailProgress > 0) {
+          const trailX = thunderBoltStartX + (thunderBoltEndX - thunderBoltStartX) * trailProgress;
+          const trailY = thunderBoltStartY + (thunderBoltEndY - thunderBoltStartY) * trailProgress;
+          const trailAlpha = Math.max(0, 0.5 - (i * 0.1));
+          ctx.strokeStyle = `rgba(255, 255, 0, ${trailAlpha})`;
+          ctx.lineWidth = beamWidth * 0.6;
+          ctx.shadowBlur = 20 * trailAlpha;
+          ctx.beginPath();
+          ctx.moveTo(thunderBoltStartX, thunderBoltStartY);
+          const trailSegments = 10;
+          for (let j = 1; j <= trailSegments; j++) {
+            const segProg = j / trailSegments;
+            const segX = thunderBoltStartX + (trailX - thunderBoltStartX) * segProg + (Math.random() - 0.5) * 20;
+            const segY = thunderBoltStartY + (trailY - thunderBoltStartY) * segProg + (Math.random() - 0.5) * 20;
+            ctx.lineTo(segX, segY);
+          }
+          ctx.stroke();
+        }
+      }
+
+      // 当たった時の爆発エフェクト
+      if (thunderBoltProgress >= 0.9) {
+        const explosionProgress = (thunderBoltProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 200;
+        const explosionGradient = ctx.createRadialGradient(thunderBoltEndX, thunderBoltEndY, 0, thunderBoltEndX, thunderBoltEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.15, 'rgba(255, 255, 150, 1)');
+        explosionGradient.addColorStop(0.3, 'rgba(255, 255, 0, 1)');
+        explosionGradient.addColorStop(0.5, 'rgba(255, 200, 0, 0.9)');
+        explosionGradient.addColorStop(0.7, 'rgba(255, 150, 0, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 80;
+        ctx.shadowColor = '#ffff00';
+        ctx.beginPath();
+        ctx.arc(thunderBoltEndX, thunderBoltEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 爆発の稲妻パーティクル（多数）
+        for (let i = 0; i < 30; i++) {
+          const angle = (i / 30) * Math.PI * 2 + time / 50;
+          const radius = explosionSize * 0.9 + Math.sin(time / 30 + i) * 50;
+          const px = thunderBoltEndX + Math.cos(angle) * radius;
+          const py = thunderBoltEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.9 - explosionProgress);
+          ctx.strokeStyle = `rgba(255, 255, 0, ${particleAlpha})`;
+          ctx.lineWidth = 3;
+          ctx.shadowBlur = 25;
+          ctx.beginPath();
+          ctx.moveTo(thunderBoltEndX, thunderBoltEndY);
+          // ジグザグパス
+          for (let j = 1; j <= 4; j++) {
+            const partProg = j / 4;
+            const partX = thunderBoltEndX + (px - thunderBoltEndX) * partProg + (Math.random() - 0.5) * 15;
+            const partY = thunderBoltEndY + (py - thunderBoltEndY) * partProg + (Math.random() - 0.5) * 15;
+            ctx.lineTo(partX, partY);
+          }
+          ctx.lineTo(px, py);
+          ctx.stroke();
+        }
+
+        // 中心の強力な光
+        const coreSize = explosionSize * 0.3;
+        const coreGradient = ctx.createRadialGradient(thunderBoltEndX, thunderBoltEndY, 0, thunderBoltEndX, thunderBoltEndY, coreSize);
+        coreGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        coreGradient.addColorStop(0.5, 'rgba(255, 255, 0, 0.8)');
+        coreGradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+        ctx.fillStyle = coreGradient;
+        ctx.shadowBlur = 60;
+        ctx.beginPath();
+        ctx.arc(thunderBoltEndX, thunderBoltEndY, coreSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
     default:
       break;
   }

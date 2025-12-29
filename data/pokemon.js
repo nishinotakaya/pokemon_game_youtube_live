@@ -88,6 +88,14 @@ const POKEMON_DATA = {
     color: "#facc15",
     moves: ["プラズマフィスト", "10まんボルト", "かみなりパンチ", "ボルテッカー"]
   },
+  zapdos: {
+    id: 145,
+    name: "サンダー",
+    type: "electric",
+    hp: 160,
+    color: "#facc15",
+    moves: ["でんじほう", "かみなり", "10まんボルト", "はねやすめ"]
+  },
   // 進化後のポケモン
   raichu: {
     id: 26,

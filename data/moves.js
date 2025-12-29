@@ -59,7 +59,11 @@ const MOVES_DATA = {
 
   // ゼラオラの技
   "プラズマフィスト": { power: 160, acc: 95, type: "electric", effect: "zeraora_plasma" },
-  "かみなりパンチ": { power: 140, acc: 100, type: "electric", effect: "zeraora_thunder_punch" }
+  "かみなりパンチ": { power: 140, acc: 100, type: "electric", effect: "zeraora_thunder_punch" },
+
+  // サンダーの技
+  "でんじほう": { power: 180, acc: 90, type: "electric", effect: "zapdos_thunder_bolt" },
+  "はねやすめ": { power: 0, acc: 100, type: "flying", status: "def_up" }
 };
 
 // タイプ相性チャート
