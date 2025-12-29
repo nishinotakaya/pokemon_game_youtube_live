@@ -102,6 +102,7 @@
             const [p2Action, setP2Action] = useState("idle");
             const [evolutionEffect, setEvolutionEffect] = useState(null); // 進化演出用
             const [evolutionComplete, setEvolutionComplete] = useState(null); // 進化完了後の表示用
+            const [megaScizorFrontImageUrl, setMegaScizorFrontImageUrl] = useState(null); // メガハッサム表画像のURL（背景透過処理済み）
 
             const canvasRef = useRef(null);
             const imagesRef = useRef({ p1: new Image(), p2: new Image() });
@@ -111,6 +112,8 @@
             const megaCharizardBackImageRef = useRef(null); // メガリザードン背後画像用
             const megaLucarioBackImageRef = useRef(null); // メガルカリオ背後画像用
             const megaRayquazaBackImageRef = useRef(null); // メガレックウザ背後画像用
+            const megaScizorBackImageRef = useRef(null); // メガハッサム背後画像用（プレイヤー用）
+            const megaScizorFrontImageRef = useRef(null); // メガハッサム表画像用（CPU/進化演出用）
             const particles = useRef([]);
             const ballAnimRef = useRef({ active: false, progress: 0, status: 'none', shakeCount: 0 });
             const beamProgressRef = useRef(0);
@@ -312,6 +315,81 @@
                         console.log('メガレックウザ背後画像の読み込みに失敗しました');
                     };
                     img.src = 'メガレックウザ.png';
+                }
+            }, []);
+
+            // メガハッサム背後画像の読み込み（背景透過処理付き、プレイヤー用）
+            useEffect(() => {
+                if (!megaScizorBackImageRef.current) {
+                    const img = new Image();
+                    img.onload = () => {
+                        // 背景透過処理
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const data = imageData.data;
+
+                        // 白い背景を透過させる
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            // 白に近い色（閾値調整可能）を透過させる
+                            if (r > 240 && g > 240 && b > 240) {
+                                data[i + 3] = 0; // アルファチャンネルを0に
+                            }
+                        }
+
+                        ctx.putImageData(imageData, 0, 0);
+                        megaScizorBackImageRef.current = canvas;
+                    };
+                    img.onerror = () => {
+                        console.log('メガハッサム背後画像の読み込みに失敗しました');
+                    };
+                    img.src = 'メガハッサム_背後.png';
+                }
+            }, []);
+
+            // メガハッサム表画像の読み込み（背景透過処理付き、CPU/進化演出用）
+            useEffect(() => {
+                if (!megaScizorFrontImageRef.current) {
+                    const img = new Image();
+                    img.onload = () => {
+                        // 背景透過処理
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const data = imageData.data;
+
+                        // 白い背景を透過させる
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            // 白に近い色（閾値調整可能）を透過させる
+                            if (r > 240 && g > 240 && b > 240) {
+                                data[i + 3] = 0; // アルファチャンネルを0に
+                            }
+                        }
+
+                        ctx.putImageData(imageData, 0, 0);
+                        megaScizorFrontImageRef.current = canvas;
+                        // canvas要素を画像URLに変換して保存（選択画面と進化完了後の表示で使用）
+                        const imageUrl = canvas.toDataURL('image/png');
+                        setMegaScizorFrontImageUrl(imageUrl);
+                    };
+                    img.onerror = () => {
+                        console.log('メガハッサム表画像の読み込みに失敗しました');
+                    };
+                    img.src = 'メガハッサム_表.png';
                 }
             }, []);
 
@@ -654,7 +732,7 @@
 
                     const modifier = (TYPE_CHART[move.type]?.[defender.type] || 1.0) * (move.type === attacker.type ? 1.5 : 1.0);
                     // メガ進化ポケモンの場合は攻撃力を1.5倍に
-                    const isMegaEvolved = (attacker.key === 'raichu' || attacker.key === 'mega_rayquaza' || attacker.key === 'mega_charizard' || attacker.key === 'mega_lucario');
+                    const isMegaEvolved = (attacker.key === 'raichu' || attacker.key === 'mega_rayquaza' || attacker.key === 'mega_charizard' || attacker.key === 'mega_lucario' || attacker.key === 'mega_scizor');
                     const megaMultiplier = isMegaEvolved ? 1.5 : 1.0;
                     const damage = Math.max(1, Math.floor(((move.power * 0.3) * modifier * (0.85 + Math.random() * 0.15) * attacker.atkBoost * megaMultiplier) / defender.defBoost));
 
@@ -767,8 +845,8 @@
                     } else {
                         // 進化済みの場合は特別なURLを使用
                         const actualP1Key = getEvolvedKey(p1.key);
-                        // メガリザードンとメガルカリオはローカル画像を使用するため、URL設定をスキップ
-                        if (actualP1Key !== 'mega_charizard' && actualP1Key !== 'mega_lucario') {
+                        // メガリザードン、メガルカリオ、メガハッサムはローカル画像を使用するため、URL設定をスキップ
+                        if (actualP1Key !== 'mega_charizard' && actualP1Key !== 'mega_lucario' && actualP1Key !== 'mega_scizor') {
                             let p1ImageUrl;
                             if (p1.key === 'black_rayquaza') {
                                 // ブラックレックウザは特別な画像を使用
@@ -780,7 +858,7 @@
                             }
 
                             // 進化済みの場合は別の画像参照を使用
-                            if (actualP1Key !== p1.key && actualP1Key !== 'mega_charizard' && actualP1Key !== 'mega_lucario' && actualP1Key !== 'mega_rayquaza') {
+                            if (actualP1Key !== p1.key && actualP1Key !== 'mega_charizard' && actualP1Key !== 'mega_lucario' && actualP1Key !== 'mega_rayquaza' && actualP1Key !== 'mega_scizor') {
                                 if (!evolvedP1ImageRef.current || evolvedP1ImageRef.current.src !== p1ImageUrl) {
                                     const img = new Image();
                                     img.src = p1ImageUrl;
@@ -794,9 +872,31 @@
                         }
                     }
 
-                    imagesRef.current.p2.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p2.id}.png`;
+                    // CPUポケモンの画像URLを設定（メガハッサムの場合は表画像を使用）
+                    if (p2.key === 'mega_scizor') {
+                        // メガハッサムはローカル画像を使用するため、URL設定をスキップ
+                    } else {
+                        imagesRef.current.p2.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p2.id}.png`;
+                    }
 
-                    if (isP2Visible) drawPoke(imagesRef.current.p2, w * 0.65, h * 0.05, 160, p2Action);
+                    // CPUポケモンの描画（メガハッサムの場合は表画像を使用）
+                    if (isP2Visible) {
+                        if (p2.key === 'mega_scizor' && megaScizorFrontImageRef.current) {
+                            ctx.save();
+                            if (p2Action === 'hit') {
+                                ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
+                                ctx.translate((Math.random() - 0.5) * 10, 0);
+                            }
+                            if (megaScizorFrontImageRef.current instanceof HTMLCanvasElement) {
+                                ctx.drawImage(megaScizorFrontImageRef.current, w * 0.65, h * 0.05, 160, 160);
+                            } else if (megaScizorFrontImageRef.current.complete && megaScizorFrontImageRef.current.naturalWidth > 0) {
+                                ctx.drawImage(megaScizorFrontImageRef.current, w * 0.65, h * 0.05, 160, 160);
+                            }
+                            ctx.restore();
+                        } else {
+                            drawPoke(imagesRef.current.p2, w * 0.65, h * 0.05, 160, p2Action);
+                        }
+                    }
                     // すべてのプレイヤーポケモンを左上に配置（レックウザと同じ位置）
                     const p1X = w * 0.05;
                     const p1Y = h * 0.4;
@@ -809,7 +909,7 @@
                         // 進化済みの場合は進化後の画像を使用
                         const actualP1Key = getEvolvedKey(p1.key);
 
-                        // メガリザードン、メガルカリオ、メガレックウザはローカル画像を使用
+                        // メガリザードン、メガルカリオ、メガレックウザ、メガハッサムはローカル画像を使用
                         if (actualP1Key === 'mega_charizard' && megaCharizardBackImageRef.current) {
                             ctx.save();
                             if (p1Action === 'hit') {
@@ -883,6 +983,19 @@
                             }
 
                             ctx.restore();
+                        } else if (actualP1Key === 'mega_scizor' && megaScizorBackImageRef.current) {
+                            ctx.save();
+                            if (p1Action === 'hit') {
+                                ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
+                                ctx.translate((Math.random() - 0.5) * 10, 0);
+                            }
+                            // そのまま描画（背景透過処理済みのcanvas要素を使用）
+                            if (megaScizorBackImageRef.current instanceof HTMLCanvasElement) {
+                                ctx.drawImage(megaScizorBackImageRef.current, p1X, p1Y, p1Size, p1Size);
+                            } else if (megaScizorBackImageRef.current.complete && megaScizorBackImageRef.current.naturalWidth > 0) {
+                                ctx.drawImage(megaScizorBackImageRef.current, p1X, p1Y, p1Size, p1Size);
+                            }
+                            ctx.restore();
                         } else {
                             let p1Image = imagesRef.current.p1;
                             if (actualP1Key !== p1.key && evolvedP1ImageRef.current) {
@@ -933,58 +1046,87 @@
                         if (evolutionEffect.evolvedKey && progress > 0.3) {
                             const evolvedData = POKEMON_DATA[evolutionEffect.evolvedKey];
                             if (evolvedData) {
-                                // メガリザードン、メガレックウザ、メガルカリオは特別なURLを使用
-                                let imageUrl;
+                                // メガリザードン、メガレックウザ、メガルカリオ、メガハッサムは特別な画像を使用
+                                let pokemonImg = null;
                                 if (evolutionEffect.evolvedKey === 'mega_charizard') {
-                                    imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/0c2f066d11c448109862cec46eb62521.png';
-                                } else if (evolutionEffect.evolvedKey === 'mega_rayquaza') {
-                                    imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
-                                } else if (evolutionEffect.evolvedKey === 'mega_lucario') {
-                                    imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
-                                } else {
-                                    imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${evolvedData.id}.png`;
-                                }
-
-                                // 画像を事前に読み込む（エラーハンドリング付き）
-                                if (!evolvedPokemonImageRef.current || evolvedPokemonImageRef.current.src !== imageUrl) {
-                                    const img = new Image();
-                                    // CORSエラーを回避するため、crossOriginを設定しない（zukan.pokemon.co.jpはCORSを許可していない）
-                                    if (!imageUrl.includes('zukan.pokemon.co.jp')) {
-                                        img.crossOrigin = 'anonymous';
+                                    const imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/0c2f066d11c448109862cec46eb62521.png';
+                                    if (!evolvedPokemonImageRef.current || evolvedPokemonImageRef.current.src !== imageUrl) {
+                                        const img = new Image();
+                                        img.onerror = () => {
+                                            console.log('画像の読み込みに失敗しました:', imageUrl);
+                                        };
+                                        img.src = imageUrl;
+                                        evolvedPokemonImageRef.current = img;
                                     }
-                                    img.onerror = () => {
-                                        // 画像読み込みエラー時は何もしない（描画をスキップ）
-                                        console.log('画像の読み込みに失敗しました:', imageUrl);
-                                    };
-                                    img.src = imageUrl;
-                                    evolvedPokemonImageRef.current = img;
+                                    pokemonImg = evolvedPokemonImageRef.current;
+                                } else if (evolutionEffect.evolvedKey === 'mega_rayquaza') {
+                                    const imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
+                                    if (!evolvedPokemonImageRef.current || evolvedPokemonImageRef.current.src !== imageUrl) {
+                                        const img = new Image();
+                                        img.onerror = () => {
+                                            console.log('画像の読み込みに失敗しました:', imageUrl);
+                                        };
+                                        img.src = imageUrl;
+                                        evolvedPokemonImageRef.current = img;
+                                    }
+                                    pokemonImg = evolvedPokemonImageRef.current;
+                                } else if (evolutionEffect.evolvedKey === 'mega_lucario') {
+                                    const imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
+                                    if (!evolvedPokemonImageRef.current || evolvedPokemonImageRef.current.src !== imageUrl) {
+                                        const img = new Image();
+                                        img.onerror = () => {
+                                            console.log('画像の読み込みに失敗しました:', imageUrl);
+                                        };
+                                        img.src = imageUrl;
+                                        evolvedPokemonImageRef.current = img;
+                                    }
+                                    pokemonImg = evolvedPokemonImageRef.current;
+                                } else if (evolutionEffect.evolvedKey === 'mega_scizor') {
+                                    // メガハッサムは表画像を使用（進化演出用）
+                                    pokemonImg = megaScizorFrontImageRef.current;
+                                } else {
+                                    const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${evolvedData.id}.png`;
+                                    if (!evolvedPokemonImageRef.current || evolvedPokemonImageRef.current.src !== imageUrl) {
+                                        const img = new Image();
+                                        img.crossOrigin = 'anonymous';
+                                        img.onerror = () => {
+                                            console.log('画像の読み込みに失敗しました:', imageUrl);
+                                        };
+                                        img.src = imageUrl;
+                                        evolvedPokemonImageRef.current = img;
+                                    }
+                                    pokemonImg = evolvedPokemonImageRef.current;
                                 }
-
-                                const pokemonImg = evolvedPokemonImageRef.current;
                                 // 画像が正常に読み込まれているか確認（エラー状態でないかチェック）
-                                if (pokemonImg &&
-                                    pokemonImg.complete &&
-                                    pokemonImg.naturalWidth > 0 &&
-                                    pokemonImg.naturalHeight > 0) {
-                                    try {
-                                        // 画像をより大きく表示
-                                        const baseImgSize = 300;
-                                        const imgSize = baseImgSize + Math.sin(time / 80) * 30;
-                                        const imgAlpha = Math.min(1, (progress - 0.3) / 0.3);
-                                        ctx.globalAlpha = imgAlpha;
-                                        ctx.shadowBlur = 50;
-                                        ctx.shadowColor = 'rgba(255, 255, 255, 1)';
-                                        // 画像の周りに光るエフェクト
-                                        ctx.fillStyle = `rgba(255, 255, 255, ${imgAlpha * 0.3})`;
-                                        ctx.beginPath();
-                                        ctx.arc(centerX, centerY, imgSize / 2 + 20, 0, Math.PI * 2);
-                                        ctx.fill();
-                                        ctx.drawImage(pokemonImg, centerX - imgSize / 2, centerY - imgSize / 2, imgSize, imgSize);
-                                        ctx.globalAlpha = 1;
-                                        ctx.shadowBlur = 0;
-                                    } catch (e) {
-                                        // 描画エラー時は何もしない（CORSエラーなど）
-                                        // エラーを無視して進化演出を続行
+                                if (pokemonImg) {
+                                    let isReady = false;
+                                    if (pokemonImg instanceof HTMLCanvasElement) {
+                                        isReady = true;
+                                    } else if (pokemonImg.complete && pokemonImg.naturalWidth > 0 && pokemonImg.naturalHeight > 0) {
+                                        isReady = true;
+                                    }
+
+                                    if (isReady) {
+                                        try {
+                                            // 画像をより大きく表示
+                                            const baseImgSize = 300;
+                                            const imgSize = baseImgSize + Math.sin(time / 80) * 30;
+                                            const imgAlpha = Math.min(1, (progress - 0.3) / 0.3);
+                                            ctx.globalAlpha = imgAlpha;
+                                            ctx.shadowBlur = 50;
+                                            ctx.shadowColor = 'rgba(255, 255, 255, 1)';
+                                            // 画像の周りに光るエフェクト
+                                            ctx.fillStyle = `rgba(255, 255, 255, ${imgAlpha * 0.3})`;
+                                            ctx.beginPath();
+                                            ctx.arc(centerX, centerY, imgSize / 2 + 20, 0, Math.PI * 2);
+                                            ctx.fill();
+                                            ctx.drawImage(pokemonImg, centerX - imgSize / 2, centerY - imgSize / 2, imgSize, imgSize);
+                                            ctx.globalAlpha = 1;
+                                            ctx.shadowBlur = 0;
+                                        } catch (e) {
+                                            // 描画エラー時は何もしない（CORSエラーなど）
+                                            // エラーを無視して進化演出を続行
+                                        }
                                     }
                                 }
                             }
@@ -1166,6 +1308,8 @@
                                                 imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
                                             } else if (key === 'mega_lucario') {
                                                 imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
+                                            } else if (key === 'mega_scizor') {
+                                                imageUrl = megaScizorFrontImageUrl || 'メガハッサム_表.png';
                                             } else {
                                                 imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`;
                                             }
@@ -1205,7 +1349,7 @@
                                     if (EVOLUTION_MAP[key] && !isEvolved(key)) {
                                         const displayKey = getEvolvedKey(key);
                                         const displayData = POKEMON_DATA[displayKey] || data;
-                                        // メガリザードン、メガレックウザ、メガルカリオは特別なURLを使用
+                                        // メガリザードン、メガレックウザ、メガルカリオ、メガハッサムは特別な画像を使用
                                         let imageUrl;
                                         if (displayKey === 'mega_charizard') {
                                             imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/0c2f066d11c448109862cec46eb62521.png';
@@ -1213,6 +1357,8 @@
                                             imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
                                         } else if (displayKey === 'mega_lucario') {
                                             imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
+                                        } else if (displayKey === 'mega_scizor') {
+                                            imageUrl = megaScizorFrontImageUrl || 'メガハッサム_表.png';
                                         } else {
                                             imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${displayData.id}.png`;
                                         }
@@ -1331,6 +1477,8 @@
                                             imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
                                         } else if (evolutionComplete.evolvedKey === 'mega_lucario') {
                                             imageUrl = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
+                                        } else if (evolutionComplete.evolvedKey === 'mega_scizor') {
+                                            imageUrl = megaScizorFrontImageUrl || 'メガハッサム_表.png';
                                         } else {
                                             imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${evolvedData.id}.png`;
                                         }

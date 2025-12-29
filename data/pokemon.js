@@ -120,6 +120,14 @@ const POKEMON_DATA = {
     hp: 160,
     color: "#3b82f6",
     moves: ["メガパンチ", "はどうだん", "きんせつパンチ", "シャドーボール"]
+  },
+  mega_scizor: {
+    id: 212,
+    name: "メガハッサム",
+    type: "steel",
+    hp: 150,
+    color: "#ef4444",
+    moves: ["はがねのつばさ", "メタルクロー", "バレットパンチ", "アイアンヘッド"]
   }
 };
 
@@ -128,5 +136,6 @@ const EVOLUTION_MAP = {
   pikachu: { evolved: 'raichu', winsNeeded: 1 },
   rayquaza: { evolved: 'mega_rayquaza', winsNeeded: 1 },
   charizard: { evolved: 'mega_charizard', winsNeeded: 1 },
-  lucario: { evolved: 'mega_lucario', winsNeeded: 1 }
+  lucario: { evolved: 'mega_lucario', winsNeeded: 1 },
+  scizor: { evolved: 'mega_scizor', winsNeeded: 1 }
 };
