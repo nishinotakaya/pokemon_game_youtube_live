@@ -2439,6 +2439,660 @@ window.drawEffect = function (ctx, effect, targetX, targetY, width, height) {
       ctx.restore();
       break;
 
+    case 'salt_water':
+      // しおみず - 塩水のエフェクト
+      ctx.save();
+      const saltWaterProgress = effect.progress || 0;
+      const saltWaterStartX = effect.startX || targetX - 200;
+      const saltWaterStartY = effect.startY || targetY;
+      const saltWaterEndX = targetX;
+      const saltWaterEndY = targetY;
+      const saltWaterCurrentX = saltWaterStartX + (saltWaterEndX - saltWaterStartX) * saltWaterProgress;
+      const saltWaterCurrentY = saltWaterStartY + (saltWaterEndY - saltWaterStartY) * saltWaterProgress;
+
+      // 塩水の流れ
+      const saltWaterGradient = ctx.createLinearGradient(saltWaterStartX, saltWaterStartY, saltWaterCurrentX, saltWaterCurrentY);
+      saltWaterGradient.addColorStop(0, 'rgba(200, 220, 255, 0.9)');
+      saltWaterGradient.addColorStop(0.5, 'rgba(150, 200, 255, 0.8)');
+      saltWaterGradient.addColorStop(1, 'rgba(100, 180, 255, 0.7)');
+
+      ctx.strokeStyle = saltWaterGradient;
+      ctx.lineWidth = 25 + Math.sin(time / 40) * 5;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = 'rgba(100, 180, 255, 0.8)';
+
+      ctx.beginPath();
+      ctx.moveTo(saltWaterStartX, saltWaterStartY);
+      ctx.lineTo(saltWaterCurrentX, saltWaterCurrentY);
+      ctx.stroke();
+
+      // 塩の結晶が飛び散る
+      for (let i = 0; i < 20; i++) {
+        const angle = (i / 20) * Math.PI * 2 + time / 100;
+        const radius = saltWaterProgress * 80 + Math.sin(time / 50 + i) * 20;
+        const px = saltWaterCurrentX + Math.cos(angle) * radius;
+        const py = saltWaterCurrentY + Math.sin(angle) * radius;
+
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.9 - saltWaterProgress * 0.5})`;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(px, py, 4 + Math.sin(time / 30 + i) * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 当たった時の水しぶき
+      if (saltWaterProgress >= 0.95) {
+        const splashProgress = (saltWaterProgress - 0.95) / 0.05;
+        for (let i = 0; i < 30; i++) {
+          const angle = (i / 30) * Math.PI * 2;
+          const radius = splashProgress * 100;
+          const px = saltWaterEndX + Math.cos(angle) * radius;
+          const py = saltWaterEndY + Math.sin(angle) * radius;
+
+          ctx.fillStyle = `rgba(150, 200, 255, ${1 - splashProgress})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 8 + Math.sin(time / 20 + i) * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'surf':
+      // なみのり - 巨大な波のエフェクト
+      ctx.save();
+      const surfProgress = effect.progress || 0;
+      const surfStartX = effect.startX || targetX - 300;
+      const surfStartY = effect.startY || targetY;
+      const surfEndX = targetX;
+      const surfEndY = targetY;
+      const surfCurrentX = surfStartX + (surfEndX - surfStartX) * surfProgress;
+
+      // 巨大な波
+      const waveHeight = 80 + Math.sin(time / 30) * 20;
+      const waveGradient = ctx.createLinearGradient(surfCurrentX - 150, surfStartY - waveHeight, surfCurrentX - 150, surfStartY + waveHeight);
+      waveGradient.addColorStop(0, 'rgba(100, 180, 255, 0.9)');
+      waveGradient.addColorStop(0.5, 'rgba(60, 150, 255, 0.8)');
+      waveGradient.addColorStop(1, 'rgba(30, 120, 255, 0.7)');
+
+      ctx.fillStyle = waveGradient;
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = 'rgba(60, 150, 255, 0.8)';
+
+      ctx.beginPath();
+      ctx.moveTo(surfCurrentX - 150, surfStartY + waveHeight);
+      for (let x = surfCurrentX - 150; x <= surfCurrentX + 150; x += 10) {
+        const y = surfStartY - waveHeight + Math.sin((x - surfCurrentX) / 30 + time / 20) * 30;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(surfCurrentX + 150, surfStartY + waveHeight);
+      ctx.closePath();
+      ctx.fill();
+
+      // 波の先端の白い泡
+      for (let i = 0; i < 25; i++) {
+        const x = surfCurrentX - 100 + i * 8;
+        const y = surfStartY - waveHeight + Math.sin((x - surfCurrentX) / 30 + time / 20) * 30;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.8 + Math.sin(time / 15 + i) * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 5 + Math.sin(time / 20 + i) * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 当たった時の大波
+      if (surfProgress >= 0.9) {
+        const impactProgress = (surfProgress - 0.9) / 0.1;
+        const impactSize = impactProgress * 150;
+        const impactGradient = ctx.createRadialGradient(surfEndX, surfEndY, 0, surfEndX, surfEndY, impactSize);
+        impactGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        impactGradient.addColorStop(0.3, 'rgba(150, 200, 255, 0.8)');
+        impactGradient.addColorStop(1, 'rgba(60, 150, 255, 0)');
+
+        ctx.fillStyle = impactGradient;
+        ctx.beginPath();
+        ctx.arc(surfEndX, surfEndY, impactSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'hydro_pump':
+      // ハイドロポンプ - 強力な水のポンプ
+      ctx.save();
+      const hydroPumpProgress = effect.progress || 0;
+      const hydroPumpStartX = effect.startX || targetX - 200;
+      const hydroPumpStartY = effect.startY || targetY;
+      const hydroPumpEndX = targetX;
+      const hydroPumpEndY = targetY;
+      const hydroPumpCurrentX = hydroPumpStartX + (hydroPumpEndX - hydroPumpStartX) * hydroPumpProgress;
+      const hydroPumpCurrentY = hydroPumpStartY + (hydroPumpEndY - hydroPumpStartY) * hydroPumpProgress;
+
+      // 強力な水のビーム
+      const hydroPumpWidth = 35 + Math.sin(time / 25) * 8;
+      const hydroPumpGradient = ctx.createLinearGradient(hydroPumpStartX, hydroPumpStartY, hydroPumpCurrentX, hydroPumpCurrentY);
+      hydroPumpGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      hydroPumpGradient.addColorStop(0.2, 'rgba(150, 220, 255, 0.95)');
+      hydroPumpGradient.addColorStop(0.5, 'rgba(60, 180, 255, 0.9)');
+      hydroPumpGradient.addColorStop(1, 'rgba(30, 150, 255, 0.85)');
+
+      ctx.strokeStyle = hydroPumpGradient;
+      ctx.lineWidth = hydroPumpWidth;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = 'rgba(60, 180, 255, 0.9)';
+
+      ctx.beginPath();
+      ctx.moveTo(hydroPumpStartX, hydroPumpStartY);
+      ctx.lineTo(hydroPumpCurrentX, hydroPumpCurrentY);
+      ctx.stroke();
+
+      // 内側の光るコア
+      ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+      ctx.lineWidth = hydroPumpWidth * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(hydroPumpStartX, hydroPumpStartY);
+      ctx.lineTo(hydroPumpCurrentX, hydroPumpCurrentY);
+      ctx.stroke();
+
+      // 水の粒子
+      for (let i = 0; i < 30; i++) {
+        const angle = (i / 30) * Math.PI * 2 + time / 80;
+        const radius = hydroPumpWidth / 2 + 20 + Math.sin(time / 40 + i) * 15;
+        const px = hydroPumpCurrentX + Math.cos(angle) * radius;
+        const py = hydroPumpCurrentY + Math.sin(angle) * radius;
+
+        ctx.fillStyle = `rgba(150, 220, 255, ${0.8 - hydroPumpProgress * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(px, py, 3 + Math.sin(time / 25 + i) * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 当たった時の爆発
+      if (hydroPumpProgress >= 0.95) {
+        const explosionProgress = (hydroPumpProgress - 0.95) / 0.05;
+        const explosionSize = explosionProgress * 120;
+
+        const explosionGradient = ctx.createRadialGradient(hydroPumpEndX, hydroPumpEndY, 0, hydroPumpEndX, hydroPumpEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(150, 220, 255, 0.9)');
+        explosionGradient.addColorStop(0.5, 'rgba(60, 180, 255, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(30, 150, 255, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.beginPath();
+        ctx.arc(hydroPumpEndX, hydroPumpEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 水しぶき
+        for (let i = 0; i < 40; i++) {
+          const angle = (i / 40) * Math.PI * 2;
+          const radius = explosionSize * 0.8 + Math.sin(time / 15 + i) * 20;
+          const px = hydroPumpEndX + Math.cos(angle) * radius;
+          const py = hydroPumpEndY + Math.sin(angle) * radius;
+
+          ctx.fillStyle = `rgba(150, 220, 255, ${1 - explosionProgress})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 6 + Math.sin(time / 10 + i) * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'cold_flare':
+      // コールドフレア - 氷のエフェクト
+      ctx.save();
+      const coldFlareProgress = effect.progress || 0;
+      const coldFlareStartX = effect.startX || targetX - 200;
+      const coldFlareStartY = effect.startY || targetY;
+      const coldFlareEndX = targetX;
+      const coldFlareEndY = targetY;
+      const coldFlareCurrentX = coldFlareStartX + (coldFlareEndX - coldFlareStartX) * coldFlareProgress;
+      const coldFlareCurrentY = coldFlareStartY + (coldFlareEndY - coldFlareStartY) * coldFlareProgress;
+
+      // 氷のビーム
+      const coldFlareWidth = 30 + Math.sin(time / 30) * 6;
+      const coldFlareGradient = ctx.createLinearGradient(coldFlareStartX, coldFlareStartY, coldFlareCurrentX, coldFlareCurrentY);
+      coldFlareGradient.addColorStop(0, 'rgba(200, 240, 255, 1)');
+      coldFlareGradient.addColorStop(0.3, 'rgba(150, 220, 255, 0.95)');
+      coldFlareGradient.addColorStop(0.7, 'rgba(100, 200, 255, 0.9)');
+      coldFlareGradient.addColorStop(1, 'rgba(50, 180, 255, 0.85)');
+
+      ctx.strokeStyle = coldFlareGradient;
+      ctx.lineWidth = coldFlareWidth;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = 'rgba(150, 220, 255, 0.9)';
+
+      ctx.beginPath();
+      ctx.moveTo(coldFlareStartX, coldFlareStartY);
+      ctx.lineTo(coldFlareCurrentX, coldFlareCurrentY);
+      ctx.stroke();
+
+      // 氷の結晶が飛び散る
+      for (let i = 0; i < 25; i++) {
+        const angle = (i / 25) * Math.PI * 2 + time / 60;
+        const radius = coldFlareProgress * 100 + Math.sin(time / 35 + i) * 25;
+        const px = coldFlareCurrentX + Math.cos(angle) * radius;
+        const py = coldFlareCurrentY + Math.sin(angle) * radius;
+
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(angle + time / 50);
+        ctx.fillStyle = `rgba(200, 240, 255, ${0.9 - coldFlareProgress * 0.4})`;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        // 六角形の氷の結晶
+        for (let j = 0; j < 6; j++) {
+          const a = (j / 6) * Math.PI * 2;
+          const r = 5 + Math.sin(time / 20 + i) * 2;
+          const x = Math.cos(a) * r;
+          const y = Math.sin(a) * r;
+          if (j === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 当たった時の氷結晶の爆発
+      if (coldFlareProgress >= 0.95) {
+        const iceExplosionProgress = (coldFlareProgress - 0.95) / 0.05;
+        const iceExplosionSize = iceExplosionProgress * 100;
+
+        const iceGradient = ctx.createRadialGradient(coldFlareEndX, coldFlareEndY, 0, coldFlareEndX, coldFlareEndY, iceExplosionSize);
+        iceGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        iceGradient.addColorStop(0.3, 'rgba(200, 240, 255, 0.9)');
+        iceGradient.addColorStop(0.6, 'rgba(150, 220, 255, 0.7)');
+        iceGradient.addColorStop(1, 'rgba(100, 200, 255, 0)');
+
+        ctx.fillStyle = iceGradient;
+        ctx.beginPath();
+        ctx.arc(coldFlareEndX, coldFlareEndY, iceExplosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 大きな氷の結晶
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2;
+          const radius = iceExplosionSize * 0.7;
+          const px = coldFlareEndX + Math.cos(angle) * radius;
+          const py = coldFlareEndY + Math.sin(angle) * radius;
+
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.rotate(angle + time / 30);
+          ctx.fillStyle = `rgba(200, 240, 255, ${1 - iceExplosionProgress})`;
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          for (let j = 0; j < 6; j++) {
+            const a = (j / 6) * Math.PI * 2;
+            const r = 12;
+            const x = Math.cos(a) * r;
+            const y = Math.sin(a) * r;
+            if (j === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'earthquake':
+      // じしん - 地震のエフェクト
+      ctx.save();
+      const earthquakeProgress = effect.progress || 0;
+      const earthquakeX = effect.startX || targetX;
+      const earthquakeY = effect.startY || targetY + 50;
+      const earthquakeTargetX = targetX;
+      const earthquakeTargetY = targetY;
+
+      // 地面の揺れ
+      const shakeIntensity = Math.sin(time / 10) * (earthquakeProgress * 15);
+      ctx.strokeStyle = 'rgba(139, 69, 19, 0.8)';
+      ctx.lineWidth = 8;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = 'rgba(139, 69, 19, 0.6)';
+
+      // 地面の亀裂
+      for (let i = 0; i < 5; i++) {
+        const crackX = earthquakeTargetX - 100 + i * 50 + shakeIntensity;
+        const crackY = earthquakeTargetY + 30 + Math.sin(time / 15 + i) * 5;
+        const crackLength = 40 + earthquakeProgress * 60;
+
+        ctx.beginPath();
+        ctx.moveTo(crackX, crackY);
+        for (let j = 0; j < 10; j++) {
+          const offsetX = (j / 10) * crackLength + Math.sin(time / 20 + i + j) * 5;
+          const offsetY = j * 3 + Math.sin(time / 25 + i + j) * 8;
+          ctx.lineTo(crackX + offsetX, crackY + offsetY);
+        }
+        ctx.stroke();
+      }
+
+      // 地面から飛び散る岩
+      for (let i = 0; i < 20; i++) {
+        const angle = (i / 20) * Math.PI * 2;
+        const radius = earthquakeProgress * 120 + Math.sin(time / 20 + i) * 30;
+        const px = earthquakeTargetX + Math.cos(angle) * radius + shakeIntensity;
+        const py = earthquakeTargetY + 20 + Math.sin(angle) * radius * 0.5;
+
+        ctx.fillStyle = `rgba(101, 67, 33, ${0.9 - earthquakeProgress * 0.3})`;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(px, py, 6 + Math.sin(time / 15 + i) * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 衝撃波
+      if (earthquakeProgress >= 0.5) {
+        const shockWaveProgress = (earthquakeProgress - 0.5) / 0.5;
+        for (let i = 0; i < 4; i++) {
+          const waveProgress = shockWaveProgress - (i * 0.2);
+          if (waveProgress > 0) {
+            const waveSize = 50 + waveProgress * 150 + i * 30;
+            const waveAlpha = Math.max(0, (1 - waveProgress) * 0.6);
+            ctx.strokeStyle = `rgba(139, 69, 19, ${waveAlpha})`;
+            ctx.lineWidth = 6 - i;
+            ctx.beginPath();
+            ctx.arc(earthquakeTargetX, earthquakeTargetY + 30, waveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'earth_power':
+      // だいちのちから - 大地の力のエフェクト
+      ctx.save();
+      const earthPowerProgress = effect.progress || 0;
+      const earthPowerX = effect.startX || targetX;
+      const earthPowerY = effect.startY || targetY + 50;
+      const earthPowerTargetX = targetX;
+      const earthPowerTargetY = targetY;
+
+      // 地面から噴き出すエネルギー
+      const energyHeight = earthPowerProgress * 150;
+      const energyGradient = ctx.createLinearGradient(earthPowerTargetX, earthPowerTargetY + 50, earthPowerTargetX, earthPowerTargetY - energyHeight);
+      energyGradient.addColorStop(0, 'rgba(139, 69, 19, 0.9)');
+      energyGradient.addColorStop(0.3, 'rgba(160, 82, 45, 0.8)');
+      energyGradient.addColorStop(0.6, 'rgba(205, 133, 63, 0.7)');
+      energyGradient.addColorStop(1, 'rgba(255, 200, 150, 0.6)');
+
+      ctx.fillStyle = energyGradient;
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = 'rgba(205, 133, 63, 0.8)';
+
+      // エネルギー柱
+      const energyWidth = 40 + Math.sin(time / 20) * 10;
+      ctx.beginPath();
+      ctx.ellipse(earthPowerTargetX, earthPowerTargetY - energyHeight / 2, energyWidth / 2, energyHeight / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 内側の光るコア
+      ctx.fillStyle = 'rgba(255, 220, 180, 0.9)';
+      ctx.beginPath();
+      ctx.ellipse(earthPowerTargetX, earthPowerTargetY - energyHeight / 2, energyWidth / 4, energyHeight / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 周囲の岩の破片
+      for (let i = 0; i < 30; i++) {
+        const angle = (i / 30) * Math.PI * 2 + time / 50;
+        const radius = energyWidth / 2 + 30 + Math.sin(time / 25 + i) * 20;
+        const px = earthPowerTargetX + Math.cos(angle) * radius;
+        const py = earthPowerTargetY - energyHeight / 2 + Math.sin(angle) * radius * 0.3;
+
+        ctx.fillStyle = `rgba(101, 67, 33, ${0.8 - earthPowerProgress * 0.4})`;
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(px, py, 5 + Math.sin(time / 20 + i) * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 当たった時の爆発
+      if (earthPowerProgress >= 0.95) {
+        const explosionProgress = (earthPowerProgress - 0.95) / 0.05;
+        const explosionSize = explosionProgress * 130;
+
+        const explosionGradient = ctx.createRadialGradient(earthPowerTargetX, earthPowerTargetY, 0, earthPowerTargetX, earthPowerTargetY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 220, 180, 1)');
+        explosionGradient.addColorStop(0.3, 'rgba(205, 133, 63, 0.9)');
+        explosionGradient.addColorStop(0.6, 'rgba(160, 82, 45, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(139, 69, 19, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.beginPath();
+        ctx.arc(earthPowerTargetX, earthPowerTargetY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 広がる衝撃波
+        for (let i = 0; i < 5; i++) {
+          const waveProgress = explosionProgress - (i * 0.15);
+          if (waveProgress > 0) {
+            const waveSize = explosionSize * 0.5 + i * 25;
+            const waveAlpha = Math.max(0, (1 - waveProgress) * 0.7);
+            ctx.strokeStyle = `rgba(205, 133, 63, ${waveAlpha})`;
+            ctx.lineWidth = 8 - i;
+            ctx.beginPath();
+            ctx.arc(earthPowerTargetX, earthPowerTargetY, waveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'solar_beam':
+      // ソーラービーム - 太陽光線のエフェクト
+      ctx.save();
+      const solarBeamProgress = effect.progress || 0;
+      const solarBeamStartX = effect.startX || targetX - 200;
+      const solarBeamStartY = effect.startY || targetY;
+      const solarBeamEndX = targetX;
+      const solarBeamEndY = targetY;
+      const solarBeamCurrentX = solarBeamStartX + (solarBeamEndX - solarBeamStartX) * solarBeamProgress;
+      const solarBeamCurrentY = solarBeamStartY + (solarBeamEndY - solarBeamStartY) * solarBeamProgress;
+
+      // 太陽光線のビーム
+      const solarBeamWidth = 40 + Math.sin(time / 25) * 8;
+      const solarBeamGradient = ctx.createLinearGradient(solarBeamStartX, solarBeamStartY, solarBeamCurrentX, solarBeamCurrentY);
+      solarBeamGradient.addColorStop(0, 'rgba(255, 255, 200, 1)');
+      solarBeamGradient.addColorStop(0.2, 'rgba(255, 255, 100, 0.95)');
+      solarBeamGradient.addColorStop(0.5, 'rgba(255, 220, 0, 0.9)');
+      solarBeamGradient.addColorStop(0.8, 'rgba(200, 255, 0, 0.85)');
+      solarBeamGradient.addColorStop(1, 'rgba(150, 255, 0, 0.8)');
+
+      ctx.strokeStyle = solarBeamGradient;
+      ctx.lineWidth = solarBeamWidth;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 35;
+      ctx.shadowColor = 'rgba(255, 255, 100, 0.9)';
+
+      ctx.beginPath();
+      ctx.moveTo(solarBeamStartX, solarBeamStartY);
+      ctx.lineTo(solarBeamCurrentX, solarBeamCurrentY);
+      ctx.stroke();
+
+      // 内側の強烈な光
+      ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+      ctx.lineWidth = solarBeamWidth * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(solarBeamStartX, solarBeamStartY);
+      ctx.lineTo(solarBeamCurrentX, solarBeamCurrentY);
+      ctx.stroke();
+
+      // 光の粒子
+      for (let i = 0; i < 35; i++) {
+        const angle = (i / 35) * Math.PI * 2 + time / 60;
+        const radius = solarBeamWidth / 2 + 25 + Math.sin(time / 30 + i) * 20;
+        const px = solarBeamCurrentX + Math.cos(angle) * radius;
+        const py = solarBeamCurrentY + Math.sin(angle) * radius;
+
+        ctx.fillStyle = `rgba(255, 255, 150, ${0.9 - solarBeamProgress * 0.3})`;
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(px, py, 4 + Math.sin(time / 20 + i) * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 当たった時の爆発
+      if (solarBeamProgress >= 0.95) {
+        const explosionProgress = (solarBeamProgress - 0.95) / 0.05;
+        const explosionSize = explosionProgress * 140;
+
+        const explosionGradient = ctx.createRadialGradient(solarBeamEndX, solarBeamEndY, 0, solarBeamEndX, solarBeamEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(255, 255, 150, 0.95)');
+        explosionGradient.addColorStop(0.4, 'rgba(255, 220, 0, 0.9)');
+        explosionGradient.addColorStop(0.6, 'rgba(200, 255, 0, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(150, 255, 0, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.beginPath();
+        ctx.arc(solarBeamEndX, solarBeamEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 広がる光のリング
+        for (let i = 0; i < 6; i++) {
+          const ringProgress = explosionProgress - (i * 0.12);
+          if (ringProgress > 0) {
+            const ringSize = explosionSize * 0.4 + i * 30;
+            const ringAlpha = Math.max(0, (1 - ringProgress) * 0.8);
+            ctx.strokeStyle = `rgba(255, 255, 150, ${ringAlpha})`;
+            ctx.lineWidth = 8 - i;
+            ctx.beginPath();
+            ctx.arc(solarBeamEndX, solarBeamEndY, ringSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'magma_storm':
+      // マグマストーム - マグマのエフェクト
+      ctx.save();
+      const magmaStormProgress = effect.progress || 0;
+      const magmaStormStartX = effect.startX || targetX - 200;
+      const magmaStormStartY = effect.startY || targetY;
+      const magmaStormEndX = targetX;
+      const magmaStormEndY = targetY;
+      const magmaStormCurrentX = magmaStormStartX + (magmaStormEndX - magmaStormStartX) * magmaStormProgress;
+      const magmaStormCurrentY = magmaStormStartY + (magmaStormEndY - magmaStormStartY) * magmaStormProgress;
+
+      // マグマの流れ
+      const magmaWidth = 45 + Math.sin(time / 20) * 10;
+      const magmaGradient = ctx.createLinearGradient(magmaStormStartX, magmaStormStartY, magmaStormCurrentX, magmaStormCurrentY);
+      magmaGradient.addColorStop(0, 'rgba(255, 100, 0, 1)');
+      magmaGradient.addColorStop(0.2, 'rgba(255, 50, 0, 0.95)');
+      magmaGradient.addColorStop(0.5, 'rgba(200, 0, 0, 0.9)');
+      magmaGradient.addColorStop(0.8, 'rgba(150, 0, 0, 0.85)');
+      magmaGradient.addColorStop(1, 'rgba(100, 0, 0, 0.8)');
+
+      ctx.strokeStyle = magmaGradient;
+      ctx.lineWidth = magmaWidth;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 40;
+      ctx.shadowColor = 'rgba(255, 100, 0, 0.9)';
+
+      ctx.beginPath();
+      ctx.moveTo(magmaStormStartX, magmaStormStartY);
+      ctx.lineTo(magmaStormCurrentX, magmaStormCurrentY);
+      ctx.stroke();
+
+      // 内側の白熱したコア
+      ctx.strokeStyle = 'rgba(255, 255, 200, 1)';
+      ctx.lineWidth = magmaWidth * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(magmaStormStartX, magmaStormStartY);
+      ctx.lineTo(magmaStormCurrentX, magmaStormCurrentY);
+      ctx.stroke();
+
+      // マグマの粒子と火花
+      for (let i = 0; i < 40; i++) {
+        const angle = (i / 40) * Math.PI * 2 + time / 50;
+        const radius = magmaWidth / 2 + 30 + Math.sin(time / 25 + i) * 25;
+        const px = magmaStormCurrentX + Math.cos(angle) * radius;
+        const py = magmaStormCurrentY + Math.sin(angle) * radius;
+
+        const particleColor = i % 3 === 0 ? 'rgba(255, 255, 200, 0.9)' : 'rgba(255, 100, 0, 0.8)';
+        ctx.fillStyle = particleColor;
+        ctx.shadowBlur = 25;
+        ctx.beginPath();
+        ctx.arc(px, py, 5 + Math.sin(time / 15 + i) * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 当たった時のマグマ爆発
+      if (magmaStormProgress >= 0.95) {
+        const explosionProgress = (magmaStormProgress - 0.95) / 0.05;
+        const explosionSize = explosionProgress * 150;
+
+        const explosionGradient = ctx.createRadialGradient(magmaStormEndX, magmaStormEndY, 0, magmaStormEndX, magmaStormEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 200, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(255, 150, 0, 0.95)');
+        explosionGradient.addColorStop(0.4, 'rgba(255, 50, 0, 0.9)');
+        explosionGradient.addColorStop(0.6, 'rgba(200, 0, 0, 0.8)');
+        explosionGradient.addColorStop(1, 'rgba(100, 0, 0, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.beginPath();
+        ctx.arc(magmaStormEndX, magmaStormEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // マグマの破片が飛び散る
+        for (let i = 0; i < 50; i++) {
+          const angle = (i / 50) * Math.PI * 2;
+          const radius = explosionSize * 0.7 + Math.sin(time / 10 + i) * 30;
+          const px = magmaStormEndX + Math.cos(angle) * radius;
+          const py = magmaStormEndY + Math.sin(angle) * radius;
+
+          const fragmentColor = i % 4 === 0 ? 'rgba(255, 255, 200, 0.9)' : 'rgba(255, 100, 0, 0.8)';
+          ctx.fillStyle = fragmentColor;
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(px, py, 7 + Math.sin(time / 12 + i) * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 広がる衝撃波
+        for (let i = 0; i < 6; i++) {
+          const waveProgress = explosionProgress - (i * 0.1);
+          if (waveProgress > 0) {
+            const waveSize = explosionSize * 0.5 + i * 30;
+            const waveAlpha = Math.max(0, (1 - waveProgress) * 0.7);
+            ctx.strokeStyle = `rgba(255, 150, 0, ${waveAlpha})`;
+            ctx.lineWidth = 10 - i;
+            ctx.beginPath();
+            ctx.arc(magmaStormEndX, magmaStormEndY, waveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
     default:
       break;
   }

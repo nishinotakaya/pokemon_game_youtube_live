@@ -945,6 +945,198 @@
                             await new Promise(r => setTimeout(r, 20));
                         }
                         await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "salt_water") {
+                        // しおみずのエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'salt_water',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'salt_water') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "surf") {
+                        // なみのりのエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'surf',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'surf') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 25));
+                        }
+                        await new Promise(r => setTimeout(r, 700));
+                    } else if (move.effect === "hydro_pump") {
+                        // ハイドロポンプのエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'hydro_pump',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.015) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'hydro_pump') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 18));
+                        }
+                        await new Promise(r => setTimeout(r, 700));
+                    } else if (move.effect === "cold_flare") {
+                        // コールドフレアのエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'cold_flare',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'cold_flare') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "earthquake") {
+                        // じしんのエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'earthquake',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'earthquake') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 25));
+                        }
+                        await new Promise(r => setTimeout(r, 700));
+                    } else if (move.effect === "earth_power") {
+                        // だいちのちからのエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'earth_power',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'earth_power') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 700));
+                    } else if (move.effect === "solar_beam") {
+                        // ソーラービームのエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'solar_beam',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.015) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'solar_beam') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 18));
+                        }
+                        await new Promise(r => setTimeout(r, 700));
+                    } else if (move.effect === "magma_storm") {
+                        // マグマストームのエフェクト
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'magma_storm',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.015) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'magma_storm') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 18));
+                        }
+                        await new Promise(r => setTimeout(r, 700));
                     } else {
                         setActiveEffect({ type: move.type, target: isP1 ? 'p2' : 'p1' });
                     }
