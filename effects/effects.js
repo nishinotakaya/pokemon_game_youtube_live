@@ -1912,6 +1912,533 @@ window.drawEffect = function (ctx, effect, targetX, targetY, width, height) {
       ctx.restore();
       break;
 
+    case 'steel_wing':
+      // はがねのつばさのエフェクト - 鋼の翼が高速で飛んでいく
+      ctx.save();
+      const steelWingProgress = effect.progress !== undefined ? effect.progress : 0;
+      const steelWingStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const steelWingStartY = effect.startY !== undefined ? effect.startY : targetY;
+      const steelWingEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const steelWingEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // 翼の軌道
+      const steelWingCurrentX = steelWingStartX + (steelWingEndX - steelWingStartX) * steelWingProgress;
+      const steelWingCurrentY = steelWingStartY + (steelWingEndY - steelWingStartY) * steelWingProgress;
+
+      // 鋼の翼の描画（金属的な光沢とスピード感）
+      ctx.save();
+      ctx.translate(steelWingCurrentX, steelWingCurrentY);
+      ctx.rotate(Math.atan2(steelWingEndY - steelWingStartY, steelWingEndX - steelWingStartX));
+
+      // 翼の本体（金属的なグラデーション）
+      const wingGradient = ctx.createLinearGradient(-60, -20, 60, 20);
+      wingGradient.addColorStop(0, 'rgba(200, 200, 220, 0.9)');
+      wingGradient.addColorStop(0.3, 'rgba(150, 150, 180, 0.95)');
+      wingGradient.addColorStop(0.5, 'rgba(100, 100, 140, 1)');
+      wingGradient.addColorStop(0.7, 'rgba(150, 150, 180, 0.95)');
+      wingGradient.addColorStop(1, 'rgba(200, 200, 220, 0.9)');
+
+      ctx.fillStyle = wingGradient;
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = 'rgba(150, 150, 180, 0.8)';
+
+      // 翼の形状（三角形のような形）
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-50, -25);
+      ctx.lineTo(-30, -15);
+      ctx.lineTo(0, -5);
+      ctx.lineTo(30, -15);
+      ctx.lineTo(50, -25);
+      ctx.lineTo(0, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // 翼のハイライト（金属の光沢）
+      const highlightGradient = ctx.createLinearGradient(-40, -15, 40, 15);
+      highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+      highlightGradient.addColorStop(0.5, 'rgba(200, 200, 220, 0.6)');
+      highlightGradient.addColorStop(1, 'rgba(150, 150, 180, 0.4)');
+      ctx.fillStyle = highlightGradient;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-30, -15);
+      ctx.lineTo(0, -5);
+      ctx.lineTo(30, -15);
+      ctx.closePath();
+      ctx.fill();
+
+      // 翼の縁（鋭いエッジ）
+      ctx.strokeStyle = 'rgba(100, 100, 140, 1)';
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.moveTo(-50, -25);
+      ctx.lineTo(-30, -15);
+      ctx.lineTo(0, -5);
+      ctx.lineTo(30, -15);
+      ctx.lineTo(50, -25);
+      ctx.stroke();
+
+      ctx.restore();
+
+      // 翼の軌跡（残像エフェクト）
+      for (let i = 1; i <= 5; i++) {
+        const trailProgress = steelWingProgress - (i * 0.1);
+        if (trailProgress > 0) {
+          const trailX = steelWingStartX + (steelWingEndX - steelWingStartX) * trailProgress;
+          const trailY = steelWingStartY + (steelWingEndY - steelWingStartY) * trailProgress;
+          const trailAlpha = Math.max(0, 0.5 - (i * 0.1));
+
+          ctx.save();
+          ctx.translate(trailX, trailY);
+          ctx.rotate(Math.atan2(steelWingEndY - steelWingStartY, steelWingEndX - steelWingStartX));
+          ctx.globalAlpha = trailAlpha;
+
+          ctx.fillStyle = 'rgba(150, 150, 180, 0.6)';
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-40, -20);
+          ctx.lineTo(-20, -12);
+          ctx.lineTo(0, -4);
+          ctx.lineTo(20, -12);
+          ctx.lineTo(40, -20);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.restore();
+        }
+      }
+
+      // 当たった時の爆発エフェクト（金属の破片が飛び散る）
+      if (steelWingProgress >= 0.9) {
+        const explosionProgress = (steelWingProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 120;
+
+        // 中央の爆発
+        const explosionGradient = ctx.createRadialGradient(steelWingEndX, steelWingEndY, 0, steelWingEndX, steelWingEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(200, 200, 220, 0.9)');
+        explosionGradient.addColorStop(0.4, 'rgba(150, 150, 180, 0.8)');
+        explosionGradient.addColorStop(0.6, 'rgba(100, 100, 140, 0.6)');
+        explosionGradient.addColorStop(1, 'rgba(50, 50, 80, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 60;
+        ctx.shadowColor = 'rgba(150, 150, 180, 0.9)';
+        ctx.beginPath();
+        ctx.arc(steelWingEndX, steelWingEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 金属の破片が飛び散る
+        for (let i = 0; i < 25; i++) {
+          const angle = (i / 25) * Math.PI * 2 + time / 40;
+          const radius = explosionSize * 0.8 + Math.sin(time / 25 + i) * 40;
+          const px = steelWingEndX + Math.cos(angle) * radius;
+          const py = steelWingEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.9 - explosionProgress);
+          ctx.fillStyle = `rgba(200, 200, 220, ${particleAlpha})`;
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          // 破片の形状（細長い）
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.rotate(angle);
+          ctx.fillRect(-8, -3, 16, 6);
+          ctx.restore();
+        }
+
+        // 衝撃波
+        for (let i = 0; i < 5; i++) {
+          const shockWaveProgress = explosionProgress - (i * 0.15);
+          if (shockWaveProgress > 0) {
+            const shockWaveSize = explosionSize * 0.5 + i * 20;
+            const shockWaveAlpha = Math.max(0, (1 - shockWaveProgress) * 0.7);
+            ctx.strokeStyle = `rgba(200, 200, 220, ${shockWaveAlpha})`;
+            ctx.lineWidth = 5 - i * 0.5;
+            ctx.shadowBlur = 25;
+            ctx.beginPath();
+            ctx.arc(steelWingEndX, steelWingEndY, shockWaveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'metal_claw':
+      // メタルクローのエフェクト - 金属の爪が切り裂く
+      ctx.save();
+      const metalClawProgress = effect.progress !== undefined ? effect.progress : 0;
+      const metalClawStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const metalClawStartY = effect.startY !== undefined ? effect.startY : targetY + 50;
+      const metalClawEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const metalClawEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // 爪の軌道
+      const metalClawCurrentX = metalClawStartX + (metalClawEndX - metalClawStartX) * metalClawProgress;
+      const metalClawCurrentY = metalClawStartY + (metalClawEndY - metalClawStartY) * metalClawProgress;
+
+      // 3本の爪を描画
+      for (let clawIndex = 0; clawIndex < 3; clawIndex++) {
+        const clawOffset = (clawIndex - 1) * 20;
+        const clawAngle = Math.atan2(metalClawEndY - metalClawStartY, metalClawEndX - metalClawStartX);
+        const clawX = metalClawCurrentX + Math.cos(clawAngle + Math.PI / 2) * clawOffset;
+        const clawY = metalClawCurrentY + Math.sin(clawAngle + Math.PI / 2) * clawOffset;
+
+        ctx.save();
+        ctx.translate(clawX, clawY);
+        ctx.rotate(clawAngle);
+
+        // 爪の本体（金属的なグラデーション）
+        const clawGradient = ctx.createLinearGradient(0, 0, 0, -40);
+        clawGradient.addColorStop(0, 'rgba(200, 200, 220, 1)');
+        clawGradient.addColorStop(0.3, 'rgba(150, 150, 180, 0.95)');
+        clawGradient.addColorStop(0.6, 'rgba(100, 100, 140, 0.9)');
+        clawGradient.addColorStop(1, 'rgba(80, 80, 120, 0.8)');
+
+        ctx.fillStyle = clawGradient;
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = 'rgba(150, 150, 180, 0.9)';
+
+        // 爪の形状（鋭い三角形）
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-8, -35);
+        ctx.lineTo(0, -40);
+        ctx.lineTo(8, -35);
+        ctx.closePath();
+        ctx.fill();
+
+        // 爪のハイライト
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-4, -30);
+        ctx.lineTo(0, -35);
+        ctx.lineTo(4, -30);
+        ctx.closePath();
+        ctx.fill();
+
+        // 爪のエッジ（鋭い線）
+        ctx.strokeStyle = 'rgba(100, 100, 140, 1)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-8, -35);
+        ctx.lineTo(0, -40);
+        ctx.lineTo(8, -35);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // 爪の軌跡（残像）
+      for (let i = 1; i <= 4; i++) {
+        const trailProgress = metalClawProgress - (i * 0.12);
+        if (trailProgress > 0) {
+          const trailX = metalClawStartX + (metalClawEndX - metalClawStartX) * trailProgress;
+          const trailY = metalClawStartY + (metalClawEndY - metalClawStartY) * trailProgress;
+          const trailAlpha = Math.max(0, 0.4 - (i * 0.1));
+
+          for (let clawIndex = 0; clawIndex < 3; clawIndex++) {
+            const clawOffset = (clawIndex - 1) * 20;
+            const clawAngle = Math.atan2(metalClawEndY - metalClawStartY, metalClawEndX - metalClawStartX);
+            const clawX = trailX + Math.cos(clawAngle + Math.PI / 2) * clawOffset;
+            const clawY = trailY + Math.sin(clawAngle + Math.PI / 2) * clawOffset;
+
+            ctx.save();
+            ctx.translate(clawX, clawY);
+            ctx.rotate(clawAngle);
+            ctx.globalAlpha = trailAlpha;
+
+            ctx.fillStyle = 'rgba(150, 150, 180, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-6, -28);
+            ctx.lineTo(0, -32);
+            ctx.lineTo(6, -28);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+          }
+        }
+      }
+
+      // 当たった時の切り裂きエフェクト
+      if (metalClawProgress >= 0.9) {
+        const slashProgress = (metalClawProgress - 0.9) / 0.1;
+
+        // 切り裂きの線（X字）
+        for (let i = 0; i < 2; i++) {
+          const slashAngle = (i * Math.PI / 2) + Math.atan2(metalClawEndY - metalClawStartY, metalClawEndX - metalClawStartX);
+          const slashLength = 80 + slashProgress * 40;
+          const slashX1 = metalClawEndX - Math.cos(slashAngle) * slashLength;
+          const slashY1 = metalClawEndY - Math.sin(slashAngle) * slashLength;
+          const slashX2 = metalClawEndX + Math.cos(slashAngle) * slashLength;
+          const slashY2 = metalClawEndY + Math.sin(slashAngle) * slashLength;
+
+          const slashGradient = ctx.createLinearGradient(slashX1, slashY1, slashX2, slashY2);
+          slashGradient.addColorStop(0, 'rgba(200, 200, 220, 0)');
+          slashGradient.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 * (1 - slashProgress)})`);
+          slashGradient.addColorStop(1, 'rgba(200, 200, 220, 0)');
+
+          ctx.strokeStyle = slashGradient;
+          ctx.lineWidth = 6;
+          ctx.shadowBlur = 30;
+          ctx.shadowColor = 'rgba(200, 200, 220, 0.9)';
+          ctx.beginPath();
+          ctx.moveTo(slashX1, slashY1);
+          ctx.lineTo(slashX2, slashY2);
+          ctx.stroke();
+        }
+
+        // 金属の火花が飛び散る
+        for (let i = 0; i < 20; i++) {
+          const angle = (i / 20) * Math.PI * 2 + time / 50;
+          const radius = 60 + Math.sin(time / 30 + i) * 30;
+          const px = metalClawEndX + Math.cos(angle) * radius;
+          const py = metalClawEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.8 - slashProgress);
+          ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha})`;
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.arc(px, py, 4 + Math.sin(time / 40 + i) * 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'bullet_punch':
+      // バレットパンチのエフェクト - 高速の連続パンチ
+      ctx.save();
+      const bulletPunchProgress = effect.progress !== undefined ? effect.progress : 0;
+      const bulletPunchStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const bulletPunchStartY = effect.startY !== undefined ? effect.startY : targetY + 50;
+      const bulletPunchEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const bulletPunchEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // 連続パンチ（高速で複数回）
+      const bulletPunchCount = 8;
+      for (let punchIndex = 0; punchIndex < bulletPunchCount; punchIndex++) {
+        const punchDelay = punchIndex * 0.1;
+        const punchProgress = Math.max(0, Math.min(1, (bulletPunchProgress - punchDelay) / 0.3));
+
+        if (punchProgress > 0) {
+          const punchCurrentX = bulletPunchStartX + (bulletPunchEndX - bulletPunchStartX) * punchProgress;
+          const punchCurrentY = bulletPunchStartY + (bulletPunchEndY - bulletPunchStartY) * punchProgress;
+          const punchOffset = (Math.sin(punchIndex) * 15) * (1 - punchProgress);
+
+          // パンチの描画（金属の拳）
+          const punchSize = 30 - punchIndex * 2;
+          const punchGradient = ctx.createRadialGradient(punchCurrentX + punchOffset, punchCurrentY, 0, punchCurrentX + punchOffset, punchCurrentY, punchSize);
+          punchGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+          punchGradient.addColorStop(0.2, 'rgba(200, 200, 220, 0.95)');
+          punchGradient.addColorStop(0.4, 'rgba(150, 150, 180, 0.9)');
+          punchGradient.addColorStop(0.6, 'rgba(100, 100, 140, 0.85)');
+          punchGradient.addColorStop(1, 'rgba(80, 80, 120, 0)');
+
+          ctx.fillStyle = punchGradient;
+          ctx.shadowBlur = 35;
+          ctx.shadowColor = 'rgba(150, 150, 180, 0.9)';
+          ctx.beginPath();
+          ctx.arc(punchCurrentX + punchOffset, punchCurrentY, punchSize, 0, Math.PI * 2);
+          ctx.fill();
+
+          // パンチの周りの衝撃波
+          if (punchProgress > 0.5) {
+            const shockWaveSize = (punchProgress - 0.5) * 2 * 60;
+            const shockWaveAlpha = Math.max(0, (1 - punchProgress) * 0.6);
+            ctx.strokeStyle = `rgba(200, 200, 220, ${shockWaveAlpha})`;
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(punchCurrentX + punchOffset, punchCurrentY, punchSize + shockWaveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // 当たった時の爆発エフェクト
+      if (bulletPunchProgress >= 0.9) {
+        const explosionProgress = (bulletPunchProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 100;
+
+        const explosionGradient = ctx.createRadialGradient(bulletPunchEndX, bulletPunchEndY, 0, bulletPunchEndX, bulletPunchEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(200, 200, 220, 0.9)');
+        explosionGradient.addColorStop(0.4, 'rgba(150, 150, 180, 0.8)');
+        explosionGradient.addColorStop(0.6, 'rgba(100, 100, 140, 0.6)');
+        explosionGradient.addColorStop(1, 'rgba(50, 50, 80, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 50;
+        ctx.shadowColor = 'rgba(150, 150, 180, 0.9)';
+        ctx.beginPath();
+        ctx.arc(bulletPunchEndX, bulletPunchEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 金属の火花
+        for (let i = 0; i < 30; i++) {
+          const angle = (i / 30) * Math.PI * 2 + time / 40;
+          const radius = explosionSize * 0.8 + Math.sin(time / 25 + i) * 35;
+          const px = bulletPunchEndX + Math.cos(angle) * radius;
+          const py = bulletPunchEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.9 - explosionProgress);
+          ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha})`;
+          ctx.shadowBlur = 18;
+          ctx.beginPath();
+          ctx.arc(px, py, 5 + Math.sin(time / 35 + i) * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'iron_head':
+      // アイアンヘッドのエフェクト - 強力な頭突き
+      ctx.save();
+      const ironHeadProgress = effect.progress !== undefined ? effect.progress : 0;
+      const ironHeadStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const ironHeadStartY = effect.startY !== undefined ? effect.startY : targetY + 50;
+      const ironHeadEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const ironHeadEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // 頭突きの軌道
+      const ironHeadCurrentX = ironHeadStartX + (ironHeadEndX - ironHeadStartX) * ironHeadProgress;
+      const ironHeadCurrentY = ironHeadStartY + (ironHeadEndY - ironHeadStartY) * ironHeadProgress;
+
+      // 頭突きの描画（金属の頭）
+      if (ironHeadProgress < 0.9) {
+        const headSize = 50 + Math.sin(time / 50) * 5;
+        const headGradient = ctx.createRadialGradient(ironHeadCurrentX, ironHeadCurrentY, 0, ironHeadCurrentX, ironHeadCurrentY, headSize);
+        headGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        headGradient.addColorStop(0.2, 'rgba(200, 200, 220, 0.95)');
+        headGradient.addColorStop(0.4, 'rgba(150, 150, 180, 0.9)');
+        headGradient.addColorStop(0.6, 'rgba(100, 100, 140, 0.85)');
+        headGradient.addColorStop(1, 'rgba(80, 80, 120, 0)');
+
+        ctx.fillStyle = headGradient;
+        ctx.shadowBlur = 45;
+        ctx.shadowColor = 'rgba(150, 150, 180, 0.9)';
+        ctx.beginPath();
+        ctx.arc(ironHeadCurrentX, ironHeadCurrentY, headSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 頭の周りの金属のリング
+        for (let i = 0; i < 4; i++) {
+          const ringSize = headSize + 10 + i * 12;
+          const ringAlpha = 0.8 - i * 0.2;
+          ctx.strokeStyle = `rgba(200, 200, 220, ${ringAlpha})`;
+          ctx.lineWidth = 4 - i * 0.5;
+          ctx.shadowBlur = 25;
+          ctx.beginPath();
+          ctx.arc(ironHeadCurrentX, ironHeadCurrentY, ringSize, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // 頭の周りのエネルギー粒子
+        for (let i = 0; i < 12; i++) {
+          const particleAngle = (i / 12) * Math.PI * 2 + time / 50;
+          const particleRadius = headSize + 15 + Math.sin(time / 40 + i) * 20;
+          const particleX = ironHeadCurrentX + Math.cos(particleAngle) * particleRadius;
+          const particleY = ironHeadCurrentY + Math.sin(particleAngle) * particleRadius;
+
+          const particleAlpha = 0.8 + Math.sin(time / 30 + i) * 0.2;
+          ctx.fillStyle = `rgba(200, 200, 220, ${particleAlpha})`;
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(particleX, particleY, 6 + Math.sin(time / 50 + i) * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 頭突きの軌跡（残像）
+      for (let i = 1; i <= 5; i++) {
+        const trailProgress = ironHeadProgress - (i * 0.1);
+        if (trailProgress > 0) {
+          const trailX = ironHeadStartX + (ironHeadEndX - ironHeadStartX) * trailProgress;
+          const trailY = ironHeadStartY + (ironHeadEndY - ironHeadStartY) * trailProgress;
+          const trailAlpha = Math.max(0, 0.6 - (i * 0.12));
+          const trailSize = 50 - i * 3;
+          ctx.fillStyle = `rgba(200, 200, 220, ${trailAlpha})`;
+          ctx.shadowBlur = 30 * trailAlpha;
+          ctx.beginPath();
+          ctx.arc(trailX, trailY, trailSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 当たった時の強力な爆発エフェクト
+      if (ironHeadProgress >= 0.9) {
+        const explosionProgress = (ironHeadProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 150;
+
+        // 中央の爆発
+        const explosionGradient = ctx.createRadialGradient(ironHeadEndX, ironHeadEndY, 0, ironHeadEndX, ironHeadEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.15, 'rgba(200, 200, 220, 0.95)');
+        explosionGradient.addColorStop(0.3, 'rgba(150, 150, 180, 0.9)');
+        explosionGradient.addColorStop(0.5, 'rgba(100, 100, 140, 0.8)');
+        explosionGradient.addColorStop(0.7, 'rgba(80, 80, 120, 0.6)');
+        explosionGradient.addColorStop(1, 'rgba(50, 50, 80, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 70;
+        ctx.shadowColor = 'rgba(150, 150, 180, 0.9)';
+        ctx.beginPath();
+        ctx.arc(ironHeadEndX, ironHeadEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 広がる衝撃波（複数）
+        for (let i = 0; i < 6; i++) {
+          const shockWaveProgress = explosionProgress - (i * 0.12);
+          if (shockWaveProgress > 0) {
+            const shockWaveSize = explosionSize * 0.4 + i * 25;
+            const shockWaveAlpha = Math.max(0, (1 - shockWaveProgress) * 0.8);
+            ctx.strokeStyle = `rgba(200, 200, 220, ${shockWaveAlpha})`;
+            ctx.lineWidth = 6 - i * 0.5;
+            ctx.shadowBlur = 30;
+            ctx.beginPath();
+            ctx.arc(ironHeadEndX, ironHeadEndY, shockWaveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
+        // 金属の破片が飛び散る
+        for (let i = 0; i < 35; i++) {
+          const angle = (i / 35) * Math.PI * 2 + time / 35;
+          const radius = explosionSize * 0.9 + Math.sin(time / 20 + i) * 45;
+          const px = ironHeadEndX + Math.cos(angle) * radius;
+          const py = ironHeadEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.95 - explosionProgress);
+          ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha})`;
+          ctx.shadowBlur = 22;
+          ctx.beginPath();
+          // 破片の形状
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.rotate(angle);
+          ctx.fillRect(-6, -2, 12, 4);
+          ctx.restore();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
     default:
       break;
   }

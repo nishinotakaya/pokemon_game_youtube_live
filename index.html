@@ -849,6 +849,102 @@
                             await new Promise(r => setTimeout(r, 30));
                         }
                         await new Promise(r => setTimeout(r, 800));
+                    } else if (move.effect === "steel_wing") {
+                        // はがねのつばさのエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'steel_wing',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.025) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'steel_wing') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "metal_claw") {
+                        // メタルクローのエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'metal_claw',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.03) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'metal_claw') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 15));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "bullet_punch") {
+                        // バレットパンチのエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'bullet_punch',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'bullet_punch') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 12));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "iron_head") {
+                        // アイアンヘッドのエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'iron_head',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'iron_head') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
                     } else {
                         setActiveEffect({ type: move.type, target: isP1 ? 'p2' : 'p1' });
                     }

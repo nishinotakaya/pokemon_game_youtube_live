@@ -19,10 +19,10 @@ const MOVES_DATA = {
   "きあいだめ": { power: 0, acc: 100, type: "normal", status: "atk_up" },
 
   // ハッサムの技
-  "はがねのつばさ": { power: 70, acc: 90, type: "steel" },
-  "メタルクロー": { power: 50, acc: 95, type: "steel" },
-  "バレットパンチ": { power: 40, acc: 100, type: "steel" },
-  "アイアンヘッド": { power: 80, acc: 100, type: "steel" },
+  "はがねのつばさ": { power: 70, acc: 90, type: "steel", effect: "steel_wing" },
+  "メタルクロー": { power: 50, acc: 95, type: "steel", effect: "metal_claw" },
+  "バレットパンチ": { power: 40, acc: 100, type: "steel", effect: "bullet_punch" },
+  "アイアンヘッド": { power: 80, acc: 100, type: "steel", effect: "iron_head" },
 
   // バサギリの技
   "エアスラッシュ": { power: 75, acc: 95, type: "flying" },
