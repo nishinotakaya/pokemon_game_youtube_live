@@ -30,7 +30,7 @@ const MOVES_DATA = {
   // レックウザの技
   "りゅうせいぐん": { power: 130, acc: 90, type: "dragon" },
   "かみなり": { power: 110, acc: 70, type: "electric" },
-  "だいもんじ": { power: 110, acc: 85, type: "fire" },
+  "だいもんじ": { power: 110, acc: 85, type: "fire", effect: "dai_monji" },
 
   // リザードンの技
   "かえんほうしゃ": { power: 90, acc: 100, type: "fire" },

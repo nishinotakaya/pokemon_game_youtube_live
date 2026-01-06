@@ -1823,6 +1823,95 @@ window.drawEffect = function (ctx, effect, targetX, targetY, width, height) {
       ctx.restore();
       break;
 
+    case 'dai_monji':
+      // だいもんじのエフェクト - 強力な火を吹いて、最後に「大」の文字で当たる
+      ctx.save();
+      const daiMonjiProgress = effect.progress !== undefined ? effect.progress : 0;
+      const daiMonjiStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const daiMonjiStartY = effect.startY !== undefined ? effect.startY : targetY;
+      const daiMonjiEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const daiMonjiEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // 火の軌道
+      const daiMonjiCurrentX = daiMonjiStartX + (daiMonjiEndX - daiMonjiStartX) * daiMonjiProgress;
+      const daiMonjiCurrentY = daiMonjiStartY + (daiMonjiEndY - daiMonjiStartY) * daiMonjiProgress;
+
+      // 強力な火の炎（複数の炎が激しく燃える）
+      for (let i = 0; i < 20; i++) {
+        const flameAngle = (i / 20) * Math.PI * 2 + time / 50;
+        const flameRadius = 40 + Math.sin(time / 40 + i) * 30;
+        const flameX = daiMonjiCurrentX + Math.cos(flameAngle) * flameRadius;
+        const flameY = daiMonjiCurrentY + Math.sin(flameAngle) * flameRadius;
+
+        const flameGradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY, 25 + Math.sin(time / 60 + i) * 10);
+        flameGradient.addColorStop(0, `rgba(255, 255, 255, ${0.9 + Math.sin(time / 30 + i) * 0.1})`);
+        flameGradient.addColorStop(0.2, `rgba(255, 200, 0, ${0.95 + Math.sin(time / 40 + i) * 0.05})`);
+        flameGradient.addColorStop(0.4, `rgba(255, 100, 0, ${0.9 + Math.sin(time / 50 + i) * 0.1})`);
+        flameGradient.addColorStop(0.6, `rgba(255, 50, 0, ${0.85 + Math.sin(time / 60 + i) * 0.15})`);
+        flameGradient.addColorStop(1, 'rgba(200, 0, 0, 0)');
+
+        ctx.fillStyle = flameGradient;
+        ctx.shadowBlur = 40;
+        ctx.shadowColor = 'rgba(255, 100, 0, 0.9)';
+        ctx.beginPath();
+        ctx.arc(flameX, flameY, 20 + Math.sin(time / 50 + i) * 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 火の流れ（炎が前方に流れる）
+      for (let i = 0; i < 15; i++) {
+        const streamProgress = daiMonjiProgress - (i * 0.05);
+        if (streamProgress > 0) {
+          const streamX = daiMonjiStartX + (daiMonjiCurrentX - daiMonjiStartX) * streamProgress;
+          const streamY = daiMonjiStartY + (daiMonjiCurrentY - daiMonjiStartY) * streamProgress;
+          const streamOffset = (Math.sin(time / 30 + i) * 20) * (1 - streamProgress);
+
+          const streamGradient = ctx.createRadialGradient(streamX + streamOffset, streamY, 0, streamX + streamOffset, streamY, 30);
+          streamGradient.addColorStop(0, `rgba(255, 255, 0, ${0.8 * (1 - streamProgress)})`);
+          streamGradient.addColorStop(0.3, `rgba(255, 150, 0, ${0.7 * (1 - streamProgress)})`);
+          streamGradient.addColorStop(0.6, `rgba(255, 50, 0, ${0.6 * (1 - streamProgress)})`);
+          streamGradient.addColorStop(1, 'rgba(200, 0, 0, 0)');
+
+          ctx.fillStyle = streamGradient;
+          ctx.shadowBlur = 30;
+          ctx.beginPath();
+          ctx.arc(streamX + streamOffset, streamY, 25 + Math.sin(time / 40 + i) * 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 当たった時の「大」の文字エフェクト
+      if (daiMonjiProgress >= 0.9) {
+        const explosionProgress = (daiMonjiProgress - 0.9) / 0.1;
+
+        // 「大」の文字を描画
+        ctx.save();
+        ctx.translate(daiMonjiEndX, daiMonjiEndY);
+        ctx.scale(1 + explosionProgress * 2, 1 + explosionProgress * 2);
+        ctx.rotate(Math.sin(time / 100) * 0.1);
+
+        // 文字の影（炎の効果）
+        ctx.shadowBlur = 50;
+        ctx.shadowColor = 'rgba(255, 100, 0, 1)';
+        ctx.fillStyle = 'rgba(255, 255, 0, 1)';
+        ctx.font = `bold ${80 + explosionProgress * 40}px "MS Gothic", "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('大', 0, 0);
+
+        // 文字の外側の炎のエフェクト
+        ctx.strokeStyle = 'rgba(255, 200, 0, 1)';
+        ctx.lineWidth = 8;
+        ctx.shadowBlur = 40;
+        ctx.strokeText('大', 0, 0);
+
+        ctx.restore();
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
     default:
       break;
   }
