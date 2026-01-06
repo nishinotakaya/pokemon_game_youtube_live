@@ -753,6 +753,78 @@
                             await new Promise(r => setTimeout(r, 18));
                         }
                         await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "psychokinesis") {
+                        // サイコキネシスのエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'psychokinesis',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'psychokinesis') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 30));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "psycho_break") {
+                        // サイコブレイクのエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'psycho_break',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.018) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'psycho_break') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 18));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "psycho_shock") {
+                        // サイコショックのエフェクトの処理
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+
+                        setActiveEffect({
+                            type: 'psycho_shock',
+                            target: isP1 ? 'p2' : 'p1',
+                            startX, startY, targetX, targetY,
+                            progress: 0
+                        });
+
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => {
+                                if (!prev || prev.type !== 'psycho_shock') return prev;
+                                return { ...prev, progress: p };
+                            });
+                            await new Promise(r => setTimeout(r, 25));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
                     } else {
                         setActiveEffect({ type: move.type, target: isP1 ? 'p2' : 'p1' });
                     }

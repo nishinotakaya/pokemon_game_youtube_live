@@ -96,6 +96,14 @@ const POKEMON_DATA = {
     color: "#facc15",
     moves: ["でんじほう", "かみなり", "10まんボルト", "はねやすめ"]
   },
+  mewtwo: {
+    id: 150,
+    name: "ミュウツー",
+    type: "psychic",
+    hp: 160,
+    color: "#a855f7",
+    moves: ["サイコキネシス", "サイコブレイク", "シャドーボール", "サイコショック"]
+  },
   // 進化後のポケモン
   raichu: {
     id: 26,

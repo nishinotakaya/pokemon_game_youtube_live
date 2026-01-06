@@ -1487,6 +1487,342 @@ window.drawEffect = function (ctx, effect, targetX, targetY, width, height) {
       ctx.restore();
       break;
 
+    case 'psychokinesis':
+      // サイコキネシスのエフェクト - 念力で物体を浮かせる
+      ctx.save();
+      const psychokinesisProgress = effect.progress !== undefined ? effect.progress : 0;
+      const psychokinesisStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const psychokinesisStartY = effect.startY !== undefined ? effect.startY : targetY;
+      const psychokinesisEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const psychokinesisEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // サイコエネルギーの軌道
+      const psychokinesisCurrentX = psychokinesisStartX + (psychokinesisEndX - psychokinesisStartX) * psychokinesisProgress;
+      const psychokinesisCurrentY = psychokinesisStartY + (psychokinesisEndY - psychokinesisStartY) * psychokinesisProgress;
+
+      // サイコエネルギーの波（複数の波が広がる）
+      for (let i = 0; i < 5; i++) {
+        const waveProgress = psychokinesisProgress - (i * 0.15);
+        if (waveProgress > 0) {
+          const waveSize = 50 + i * 20;
+          const waveAlpha = Math.max(0, (1 - waveProgress) * 0.7);
+          ctx.strokeStyle = `rgba(168, 85, 247, ${waveAlpha})`;
+          ctx.lineWidth = 4 - i * 0.5;
+          ctx.shadowBlur = 25;
+          ctx.shadowColor = 'rgba(168, 85, 247, 0.8)';
+          ctx.beginPath();
+          ctx.arc(psychokinesisCurrentX, psychokinesisCurrentY, waveSize, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // サイコエネルギーの粒子（紫色の光が回転）
+      for (let i = 0; i < 16; i++) {
+        const particleAngle = (i / 16) * Math.PI * 2 + time / 80;
+        const particleRadius = 60 + Math.sin(time / 60 + i) * 20;
+        const particleX = psychokinesisCurrentX + Math.cos(particleAngle) * particleRadius;
+        const particleY = psychokinesisCurrentY + Math.sin(particleAngle) * particleRadius;
+
+        const particleAlpha = 0.8 + Math.sin(time / 50 + i) * 0.2;
+        ctx.fillStyle = `rgba(168, 85, 247, ${particleAlpha})`;
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(particleX, particleY, 8 + Math.sin(time / 70 + i) * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 中央のサイコエネルギーボール
+      const psychokinesisSize = 45 + Math.sin(time / 70) * 5;
+      const psychokinesisGradient = ctx.createRadialGradient(psychokinesisCurrentX, psychokinesisCurrentY, 0, psychokinesisCurrentX, psychokinesisCurrentY, psychokinesisSize);
+      psychokinesisGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      psychokinesisGradient.addColorStop(0.2, 'rgba(200, 150, 255, 1)');
+      psychokinesisGradient.addColorStop(0.4, 'rgba(168, 85, 247, 0.95)');
+      psychokinesisGradient.addColorStop(0.6, 'rgba(139, 92, 246, 0.85)');
+      psychokinesisGradient.addColorStop(1, 'rgba(124, 58, 237, 0)');
+
+      ctx.fillStyle = psychokinesisGradient;
+      ctx.shadowBlur = 45;
+      ctx.shadowColor = 'rgba(168, 85, 247, 0.9)';
+      ctx.beginPath();
+      ctx.arc(psychokinesisCurrentX, psychokinesisCurrentY, psychokinesisSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 当たった時の爆発エフェクト
+      if (psychokinesisProgress >= 0.9) {
+        const explosionProgress = (psychokinesisProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 150;
+        const explosionGradient = ctx.createRadialGradient(psychokinesisEndX, psychokinesisEndY, 0, psychokinesisEndX, psychokinesisEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(200, 150, 255, 1)');
+        explosionGradient.addColorStop(0.4, 'rgba(168, 85, 247, 0.9)');
+        explosionGradient.addColorStop(0.6, 'rgba(139, 92, 246, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(124, 58, 237, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 70;
+        ctx.shadowColor = 'rgba(168, 85, 247, 0.9)';
+        ctx.beginPath();
+        ctx.arc(psychokinesisEndX, psychokinesisEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 広がるサイコエネルギーのリング
+        for (let i = 0; i < 6; i++) {
+          const ringProgress = explosionProgress - (i * 0.12);
+          if (ringProgress > 0) {
+            const ringSize = explosionSize * 0.5 + i * 20;
+            const ringAlpha = Math.max(0, (1 - ringProgress) * 0.8);
+            ctx.strokeStyle = `rgba(168, 85, 247, ${ringAlpha})`;
+            ctx.lineWidth = 5 - i * 0.5;
+            ctx.shadowBlur = 30;
+            ctx.beginPath();
+            ctx.arc(psychokinesisEndX, psychokinesisEndY, ringSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
+        // 爆発のパーティクル
+        for (let i = 0; i < 25; i++) {
+          const angle = (i / 25) * Math.PI * 2 + time / 50;
+          const radius = explosionSize * 0.8 + Math.sin(time / 30 + i) * 35;
+          const px = psychokinesisEndX + Math.cos(angle) * radius;
+          const py = psychokinesisEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.9 - explosionProgress);
+          ctx.fillStyle = `rgba(168, 85, 247, ${particleAlpha})`;
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.arc(px, py, 6 + Math.sin(time / 40 + i) * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'psycho_break':
+      // サイコブレイクのエフェクト - 強力なサイコエネルギーの衝撃波
+      ctx.save();
+      const psychoBreakProgress = effect.progress !== undefined ? effect.progress : 0;
+      const psychoBreakStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const psychoBreakStartY = effect.startY !== undefined ? effect.startY : targetY;
+      const psychoBreakEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const psychoBreakEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // サイコエネルギーの軌道
+      const psychoBreakCurrentX = psychoBreakStartX + (psychoBreakEndX - psychoBreakStartX) * psychoBreakProgress;
+      const psychoBreakCurrentY = psychoBreakStartY + (psychoBreakEndY - psychoBreakStartY) * psychoBreakProgress;
+
+      // 強力なサイコエネルギービーム
+      const psychoBeamWidth = 40 + Math.sin(time / 50) * 5;
+      const psychoBeamGradient = ctx.createLinearGradient(psychoBreakStartX, psychoBreakStartY, psychoBreakCurrentX, psychoBreakCurrentY);
+      psychoBeamGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      psychoBeamGradient.addColorStop(0.2, 'rgba(200, 150, 255, 1)');
+      psychoBeamGradient.addColorStop(0.4, 'rgba(168, 85, 247, 0.95)');
+      psychoBeamGradient.addColorStop(0.6, 'rgba(139, 92, 246, 0.9)');
+      psychoBeamGradient.addColorStop(1, 'rgba(124, 58, 237, 0.7)');
+
+      ctx.strokeStyle = psychoBeamGradient;
+      ctx.lineWidth = psychoBeamWidth;
+      ctx.shadowBlur = 50;
+      ctx.shadowColor = 'rgba(168, 85, 247, 0.9)';
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(psychoBreakStartX, psychoBreakStartY);
+      ctx.lineTo(psychoBreakCurrentX, psychoBreakCurrentY);
+      ctx.stroke();
+
+      // 内側のコア
+      ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+      ctx.lineWidth = 15;
+      ctx.shadowBlur = 30;
+      ctx.beginPath();
+      ctx.moveTo(psychoBreakStartX, psychoBreakStartY);
+      ctx.lineTo(psychoBreakCurrentX, psychoBreakCurrentY);
+      ctx.stroke();
+
+      // ビームの周りのサイコエネルギーの粒子
+      for (let i = 0; i < 12; i++) {
+        const particleAngle = (i / 12) * Math.PI * 2 + time / 60;
+        const particleRadius = psychoBeamWidth / 2 + 25 + Math.sin(time / 50 + i) * 15;
+        const particleX = psychoBreakCurrentX + Math.cos(particleAngle) * particleRadius;
+        const particleY = psychoBreakCurrentY + Math.sin(particleAngle) * particleRadius;
+
+        ctx.fillStyle = `rgba(168, 85, 247, ${0.8 + Math.sin(time / 40 + i) * 0.2})`;
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(particleX, particleY, 10 + Math.sin(time / 60 + i) * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 当たった時の強力な爆発エフェクト
+      if (psychoBreakProgress >= 0.9) {
+        const explosionProgress = (psychoBreakProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 180;
+
+        // 中央の爆発
+        const explosionGradient = ctx.createRadialGradient(psychoBreakEndX, psychoBreakEndY, 0, psychoBreakEndX, psychoBreakEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.15, 'rgba(200, 150, 255, 1)');
+        explosionGradient.addColorStop(0.3, 'rgba(168, 85, 247, 1)');
+        explosionGradient.addColorStop(0.5, 'rgba(139, 92, 246, 0.9)');
+        explosionGradient.addColorStop(0.7, 'rgba(124, 58, 237, 0.7)');
+        explosionGradient.addColorStop(1, 'rgba(109, 40, 217, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 80;
+        ctx.shadowColor = 'rgba(168, 85, 247, 0.9)';
+        ctx.beginPath();
+        ctx.arc(psychoBreakEndX, psychoBreakEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 広がる衝撃波（複数）
+        for (let i = 0; i < 7; i++) {
+          const shockWaveProgress = explosionProgress - (i * 0.1);
+          if (shockWaveProgress > 0) {
+            const shockWaveSize = explosionSize * 0.4 + i * 25;
+            const shockWaveAlpha = Math.max(0, (1 - shockWaveProgress) * 0.9);
+            ctx.strokeStyle = `rgba(168, 85, 247, ${shockWaveAlpha})`;
+            ctx.lineWidth = 6 - i * 0.5;
+            ctx.shadowBlur = 35;
+            ctx.beginPath();
+            ctx.arc(psychoBreakEndX, psychoBreakEndY, shockWaveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
+        // 爆発のパーティクル（多数）
+        for (let i = 0; i < 30; i++) {
+          const angle = (i / 30) * Math.PI * 2 + time / 40;
+          const radius = explosionSize * 0.9 + Math.sin(time / 25 + i) * 40;
+          const px = psychoBreakEndX + Math.cos(angle) * radius;
+          const py = psychoBreakEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.95 - explosionProgress);
+          ctx.fillStyle = `rgba(168, 85, 247, ${particleAlpha})`;
+          ctx.shadowBlur = 25;
+          ctx.beginPath();
+          ctx.arc(px, py, 8 + Math.sin(time / 50 + i) * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
+    case 'psycho_shock':
+      // サイコショックのエフェクト - 瞬間的なサイコエネルギーの衝撃
+      ctx.save();
+      const psychoShockProgress = effect.progress !== undefined ? effect.progress : 0;
+      const psychoShockStartX = effect.startX !== undefined ? effect.startX : targetX - 200;
+      const psychoShockStartY = effect.startY !== undefined ? effect.startY : targetY;
+      const psychoShockEndX = effect.targetX !== undefined ? effect.targetX : targetX;
+      const psychoShockEndY = effect.targetY !== undefined ? effect.targetY : targetY;
+
+      // サイコエネルギーの軌道
+      const psychoShockCurrentX = psychoShockStartX + (psychoShockEndX - psychoShockStartX) * psychoShockProgress;
+      const psychoShockCurrentY = psychoShockStartY + (psychoShockEndY - psychoShockStartY) * psychoShockProgress;
+
+      // 瞬間的なサイコエネルギーの閃光
+      const flashSize = 50 + Math.sin(time / 40) * 10;
+      const flashGradient = ctx.createRadialGradient(psychoShockCurrentX, psychoShockCurrentY, 0, psychoShockCurrentX, psychoShockCurrentY, flashSize);
+      flashGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      flashGradient.addColorStop(0.15, 'rgba(200, 150, 255, 1)');
+      flashGradient.addColorStop(0.3, 'rgba(168, 85, 247, 0.95)');
+      flashGradient.addColorStop(0.5, 'rgba(139, 92, 246, 0.85)');
+      flashGradient.addColorStop(1, 'rgba(124, 58, 237, 0)');
+
+      ctx.fillStyle = flashGradient;
+      ctx.shadowBlur = 50;
+      ctx.shadowColor = 'rgba(168, 85, 247, 0.9)';
+      ctx.beginPath();
+      ctx.arc(psychoShockCurrentX, psychoShockCurrentY, flashSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 閃光の周りのサイコエネルギーのリング
+      for (let i = 0; i < 4; i++) {
+        const ringSize = flashSize + 15 + i * 15;
+        const ringAlpha = 0.8 - i * 0.2;
+        ctx.strokeStyle = `rgba(168, 85, 247, ${ringAlpha})`;
+        ctx.lineWidth = 5 - i * 0.5;
+        ctx.shadowBlur = 25;
+        ctx.beginPath();
+        ctx.arc(psychoShockCurrentX, psychoShockCurrentY, ringSize, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // サイコエネルギーの粒子（激しく回転）
+      for (let i = 0; i < 20; i++) {
+        const particleAngle = (i / 20) * Math.PI * 2 + time / 30;
+        const particleRadius = flashSize + 20 + Math.sin(time / 40 + i) * 25;
+        const particleX = psychoShockCurrentX + Math.cos(particleAngle) * particleRadius;
+        const particleY = psychoShockCurrentY + Math.sin(particleAngle) * particleRadius;
+
+        const particleAlpha = 0.9 + Math.sin(time / 25 + i) * 0.1;
+        ctx.fillStyle = `rgba(168, 85, 247, ${particleAlpha})`;
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(particleX, particleY, 9 + Math.sin(time / 50 + i) * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 当たった時の強力な爆発エフェクト
+      if (psychoShockProgress >= 0.9) {
+        const explosionProgress = (psychoShockProgress - 0.9) / 0.1;
+        const explosionSize = explosionProgress * 160;
+
+        // 中央の爆発
+        const explosionGradient = ctx.createRadialGradient(psychoShockEndX, psychoShockEndY, 0, psychoShockEndX, psychoShockEndY, explosionSize);
+        explosionGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        explosionGradient.addColorStop(0.2, 'rgba(200, 150, 255, 1)');
+        explosionGradient.addColorStop(0.4, 'rgba(168, 85, 247, 0.95)');
+        explosionGradient.addColorStop(0.6, 'rgba(139, 92, 246, 0.8)');
+        explosionGradient.addColorStop(1, 'rgba(124, 58, 237, 0)');
+
+        ctx.fillStyle = explosionGradient;
+        ctx.shadowBlur = 75;
+        ctx.shadowColor = 'rgba(168, 85, 247, 0.9)';
+        ctx.beginPath();
+        ctx.arc(psychoShockEndX, psychoShockEndY, explosionSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 広がる衝撃波
+        for (let i = 0; i < 6; i++) {
+          const shockWaveProgress = explosionProgress - (i * 0.12);
+          if (shockWaveProgress > 0) {
+            const shockWaveSize = explosionSize * 0.5 + i * 22;
+            const shockWaveAlpha = Math.max(0, (1 - shockWaveProgress) * 0.85);
+            ctx.strokeStyle = `rgba(168, 85, 247, ${shockWaveAlpha})`;
+            ctx.lineWidth = 6 - i * 0.5;
+            ctx.shadowBlur = 30;
+            ctx.beginPath();
+            ctx.arc(psychoShockEndX, psychoShockEndY, shockWaveSize, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
+        // 爆発のパーティクル
+        for (let i = 0; i < 28; i++) {
+          const angle = (i / 28) * Math.PI * 2 + time / 45;
+          const radius = explosionSize * 0.85 + Math.sin(time / 30 + i) * 38;
+          const px = psychoShockEndX + Math.cos(angle) * radius;
+          const py = psychoShockEndY + Math.sin(angle) * radius;
+
+          const particleAlpha = Math.max(0, 0.9 - explosionProgress);
+          ctx.fillStyle = `rgba(168, 85, 247, ${particleAlpha})`;
+          ctx.shadowBlur = 22;
+          ctx.beginPath();
+          ctx.arc(px, py, 7 + Math.sin(time / 55 + i) * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      break;
+
     default:
       break;
   }

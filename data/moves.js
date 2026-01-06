@@ -63,7 +63,12 @@ const MOVES_DATA = {
 
   // サンダーの技
   "でんじほう": { power: 180, acc: 90, type: "electric", effect: "zapdos_thunder_bolt" },
-  "はねやすめ": { power: 0, acc: 100, type: "flying", status: "def_up" }
+  "はねやすめ": { power: 0, acc: 100, type: "flying", status: "def_up" },
+
+  // ミュウツーの技
+  "サイコキネシス": { power: 140, acc: 100, type: "psychic", effect: "psychokinesis" },
+  "サイコブレイク": { power: 150, acc: 100, type: "psychic", effect: "psycho_break" },
+  "サイコショック": { power: 130, acc: 100, type: "psychic", effect: "psycho_shock" }
 };
 
 // タイプ相性チャート
