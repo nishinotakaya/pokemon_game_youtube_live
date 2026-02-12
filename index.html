@@ -118,6 +118,9 @@
             const megaRayquazaBackImageRef = useRef(null); // メガレックウザ背後画像用
             const megaScizorBackImageRef = useRef(null); // メガハッサム背後画像用（プレイヤー用）
             const megaScizorFrontImageRef = useRef(null); // メガハッサム表画像用（CPU/進化演出用）
+            const megaCharizardFrontImageRef = useRef(null); // メガリザードン表画像用（CPU用）
+            const megaRayquazaFrontImageRef = useRef(null); // メガレックウザ表画像用（CPU用）
+            const megaLucarioFrontImageRef = useRef(null); // メガルカリオ表画像用（CPU用）
             const particles = useRef([]);
             const ballAnimRef = useRef({ active: false, progress: 0, status: 'none', shakeCount: 0 });
             const beamProgressRef = useRef(0);
@@ -221,6 +224,9 @@
                 loadMegaRayquazaBackImage(megaRayquazaBackImageRef);
                 loadMegaScizorBackImage(megaScizorBackImageRef);
                 loadMegaScizorFrontImage(megaScizorFrontImageRef, setMegaScizorFrontImageUrl);
+                loadMegaCharizardFrontImage(megaCharizardFrontImageRef);
+                loadMegaRayquazaFrontImage(megaRayquazaFrontImageRef);
+                loadMegaLucarioFrontImage(megaLucarioFrontImageRef);
             }, []);
 
             // バサギリの画像を読み込む（背景透過処理付き）
@@ -1285,9 +1291,9 @@
                         }
                     }
 
-                    // CPUポケモンの画像URLを設定（メガハッサム、サンダーの場合は特別な処理）
-                    if (p2.key === 'mega_scizor') {
-                        // メガハッサムはローカル画像を使用するため、URL設定をスキップ
+                    // CPUポケモンの画像URLを設定（メガポケモン、サンダーの場合は特別な処理）
+                    if (isMegaPokemon(p2.key)) {
+                        // メガポケモンは専用画像を使用するため、URL設定をスキップ
                     } else if (p2.key === 'zapdos') {
                         // サンダーは背景透過処理済みの画像を使用するため、URL設定をスキップ
                     } else {
@@ -1309,7 +1315,12 @@
                                 ctx.drawImage(zapdosFrontImageRef.current, w * 0.65, h * 0.05, 160, 160);
                             }
                             ctx.restore();
-                        } else if (!drawMegaPokemonCPU(ctx, p2.key, p2Action, w, h, megaScizorFrontImageRef)) {
+                        } else if (!drawMegaPokemonCPU(ctx, p2.key, p2Action, w, h, {
+                            megaScizorFrontImageRef,
+                            megaCharizardFrontImageRef,
+                            megaRayquazaFrontImageRef,
+                            megaLucarioFrontImageRef
+                        })) {
                             drawPoke(imagesRef.current.p2, w * 0.65, h * 0.05, 160, p2Action);
                         }
                     }

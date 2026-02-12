@@ -109,6 +109,54 @@ const loadMegaScizorFrontImage = (megaScizorFrontImageRef, setMegaScizorFrontIma
   }
 };
 
+// CPU側メガリザードン表画像の読み込み
+const MEGA_CHARIZARD_FRONT_URL = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/0c2f066d11c448109862cec46eb62521.png';
+const loadMegaCharizardFrontImage = (megaCharizardFrontImageRef) => {
+  if (!megaCharizardFrontImageRef.current) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      megaCharizardFrontImageRef.current = img;
+    };
+    img.onerror = () => {
+      console.log('メガリザードン表画像の読み込みに失敗しました');
+    };
+    img.src = MEGA_CHARIZARD_FRONT_URL;
+  }
+};
+
+// CPU側メガレックウザ表画像の読み込み
+const MEGA_RAYQUAZA_FRONT_URL = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/8ac25cd367875f2ddafc63bd9e0081c4.png';
+const loadMegaRayquazaFrontImage = (megaRayquazaFrontImageRef) => {
+  if (!megaRayquazaFrontImageRef.current) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      megaRayquazaFrontImageRef.current = img;
+    };
+    img.onerror = () => {
+      console.log('メガレックウザ表画像の読み込みに失敗しました');
+    };
+    img.src = MEGA_RAYQUAZA_FRONT_URL;
+  }
+};
+
+// CPU側メガルカリオ表画像の読み込み
+const MEGA_LUCARIO_FRONT_URL = 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/4e646ee4f6ad9d9ea4b4022f74d63805.png';
+const loadMegaLucarioFrontImage = (megaLucarioFrontImageRef) => {
+  if (!megaLucarioFrontImageRef.current) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      megaLucarioFrontImageRef.current = img;
+    };
+    img.onerror = () => {
+      console.log('メガルカリオ表画像の読み込みに失敗しました');
+    };
+    img.src = MEGA_LUCARIO_FRONT_URL;
+  }
+};
+
 // プレイヤー側のメガポケモン描画
 const drawMegaPokemonPlayer = (ctx, actualP1Key, p1X, p1Y, p1Size, p1Action, imageRefs) => {
   const { megaCharizardBackImageRef, megaRayquazaBackImageRef, megaLucarioBackImageRef, megaScizorBackImageRef } = imageRefs;
@@ -208,19 +256,39 @@ const drawMegaPokemonPlayer = (ctx, actualP1Key, p1X, p1Y, p1Size, p1Action, ima
 };
 
 // CPU側のメガポケモン描画
-const drawMegaPokemonCPU = (ctx, p2Key, p2Action, w, h, megaScizorFrontImageRef) => {
-  if (p2Key === 'mega_scizor' && megaScizorFrontImageRef.current) {
+const drawMegaPokemonCPU = (ctx, p2Key, p2Action, w, h, cpuMegaImageRefs) => {
+  const drawMegaAt = (imgOrCanvas, x, y, size) => {
     ctx.save();
     if (p2Action === 'hit') {
       ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
       ctx.translate((Math.random() - 0.5) * 10, 0);
     }
-    if (megaScizorFrontImageRef.current instanceof HTMLCanvasElement) {
-      ctx.drawImage(megaScizorFrontImageRef.current, w * 0.65, h * 0.05, 160, 160);
-    } else if (megaScizorFrontImageRef.current.complete && megaScizorFrontImageRef.current.naturalWidth > 0) {
-      ctx.drawImage(megaScizorFrontImageRef.current, w * 0.65, h * 0.05, 160, 160);
+    if (imgOrCanvas instanceof HTMLCanvasElement) {
+      ctx.drawImage(imgOrCanvas, x, y, size, size);
+    } else if (imgOrCanvas && imgOrCanvas.complete && imgOrCanvas.naturalWidth > 0) {
+      ctx.drawImage(imgOrCanvas, x, y, size, size);
     }
     ctx.restore();
+  };
+
+  const x = w * 0.65;
+  const y = h * 0.05;
+  const size = 160;
+
+  if (p2Key === 'mega_charizard' && cpuMegaImageRefs.megaCharizardFrontImageRef?.current) {
+    drawMegaAt(cpuMegaImageRefs.megaCharizardFrontImageRef.current, x, y, size);
+    return true;
+  }
+  if (p2Key === 'mega_rayquaza' && cpuMegaImageRefs.megaRayquazaFrontImageRef?.current) {
+    drawMegaAt(cpuMegaImageRefs.megaRayquazaFrontImageRef.current, x, y, size);
+    return true;
+  }
+  if (p2Key === 'mega_lucario' && cpuMegaImageRefs.megaLucarioFrontImageRef?.current) {
+    drawMegaAt(cpuMegaImageRefs.megaLucarioFrontImageRef.current, x, y, size);
+    return true;
+  }
+  if (p2Key === 'mega_scizor' && cpuMegaImageRefs.megaScizorFrontImageRef?.current) {
+    drawMegaAt(cpuMegaImageRefs.megaScizorFrontImageRef.current, x, y, size);
     return true;
   }
   return false;
