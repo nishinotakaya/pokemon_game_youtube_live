@@ -80,7 +80,19 @@ const MOVES_DATA = {
   "じしん": { power: 100, acc: 100, type: "ground", effect: "earthquake" },
   "だいちのちから": { power: 90, acc: 100, type: "ground", effect: "earth_power" },
   "ソーラービーム": { power: 120, acc: 100, type: "grass", effect: "solar_beam" },
-  "マグマストーム": { power: 100, acc: 75, type: "fire", effect: "magma_storm" }
+  "マグマストーム": { power: 100, acc: 75, type: "fire", effect: "magma_storm" },
+
+  // ゲンガーの技（ゴースト・専用エフェクト）
+  "ダークヴォルテックス": { power: 95, acc: 100, type: "ghost", effect: "dark_vortex" },
+  "ファントムバースト": { power: 100, acc: 95, type: "ghost", effect: "phantom_burst" },
+  "シャドウテイル": { power: 85, acc: 100, type: "ghost", effect: "shadow_tail" },
+  "ナイトメア": { power: 110, acc: 90, type: "ghost", effect: "nightmare" },
+
+  // バッグフーンの技（炎・格闘・専用エフェクト）
+  "インフェルノ": { power: 110, acc: 85, type: "fire", effect: "bagfoon_inferno" },
+  "フレアブリッツ": { power: 120, acc: 100, type: "fire", effect: "bagfoon_flare_blitz" },
+  "れっかパンチ": { power: 100, acc: 100, type: "fighting", effect: "bagfoon_blazing_punch" },
+  "ばくえん": { power: 95, acc: 100, type: "fire", effect: "bagfoon_explosion" }
 };
 
 // タイプ相性チャート

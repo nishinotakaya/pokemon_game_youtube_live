@@ -3093,6 +3093,348 @@ window.drawEffect = function (ctx, effect, targetX, targetY, width, height) {
       ctx.restore();
       break;
 
+    case 'dark_vortex':
+      // ダークヴォルテックス - 闇の渦が相手に迫る
+      try {
+      ctx.save();
+      const vortexProgress = effect.progress !== undefined ? effect.progress : 0;
+      const vortexStartX = (effect.startX != null ? effect.startX : targetX - 200);
+      const vortexStartY = (effect.startY != null ? effect.startY : targetY);
+      const vortexEndX = (effect.targetX != null ? effect.targetX : targetX);
+      const vortexEndY = (effect.targetY != null ? effect.targetY : targetY);
+      const vortexX = vortexStartX + (vortexEndX - vortexStartX) * vortexProgress;
+      const vortexY = vortexStartY + (vortexEndY - vortexStartY) * vortexProgress;
+
+      const vortexRadius = 50 + vortexProgress * 40 + Math.sin(time / 80) * 15;
+      for (let ring = 0; ring < 5; ring++) {
+        const r = vortexRadius * (0.3 + ring * 0.2) + Math.sin(time / 100 + ring) * 8;
+        ctx.strokeStyle = `rgba(88, 28, 135, ${0.9 - ring * 0.15 - vortexProgress * 0.3})`;
+        ctx.lineWidth = 12 - ring * 2;
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = 'rgba(139, 92, 246, 0.9)';
+        ctx.beginPath();
+        for (let i = 0; i <= 24; i++) {
+          const angle = (i / 24) * Math.PI * 2 + time / 50 + vortexProgress * 4 + ring * 0.5;
+          const x = vortexX + Math.cos(angle) * r;
+          const y = vortexY + Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(59, 7, 100, 0.6)';
+      ctx.beginPath();
+      ctx.arc(vortexX, vortexY, vortexRadius * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'phantom_burst':
+      // ファントムバースト - 幽霊の球が連続で爆発
+      try {
+      ctx.save();
+      const burstProgress = effect.progress !== undefined ? effect.progress : 0;
+      const burstTargetX = (effect.targetX != null ? effect.targetX : targetX);
+      const burstTargetY = (effect.targetY != null ? effect.targetY : targetY);
+
+      for (let i = 0; i < 8; i++) {
+        const phase = (burstProgress * 1.5 - i * 0.12) % 1;
+        if (phase < 0) continue;
+        const size = (1 - phase) * 80 + Math.sin(time / 60 + i) * 10;
+        const alpha = 1 - phase;
+        const offX = (Math.sin(time / 90 + i * 1.2) * 0.5 + 0.5) * 40 - 20;
+        const offY = (Math.cos(time / 70 + i * 0.8) * 0.5 + 0.5) * 40 - 20;
+        ctx.fillStyle = `rgba(167, 139, 250, ${alpha * 0.8})`;
+        ctx.shadowBlur = 40;
+        ctx.shadowColor = 'rgba(196, 181, 253, 0.9)';
+        ctx.beginPath();
+        ctx.arc(burstTargetX + offX, burstTargetY + offY, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'shadow_tail':
+      // シャドウテイル - 影の尾が鞭のように伸びて叩く
+      try {
+      ctx.save();
+      const tailProgress = effect.progress !== undefined ? effect.progress : 0;
+      const tailStartX = (effect.startX != null ? effect.startX : targetX - 200);
+      const tailStartY = (effect.startY != null ? effect.startY : targetY);
+      const tailEndX = (effect.targetX != null ? effect.targetX : targetX);
+      const tailEndY = (effect.targetY != null ? effect.targetY : targetY);
+
+      const tailX = tailStartX + (tailEndX - tailStartX) * tailProgress;
+      const tailY = tailStartY + (tailEndY - tailStartY) * tailProgress;
+
+      ctx.strokeStyle = 'rgba(30, 27, 75, 0.95)';
+      ctx.lineWidth = 28;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 35;
+      ctx.shadowColor = 'rgba(99, 102, 241, 0.8)';
+      ctx.beginPath();
+      ctx.moveTo(tailStartX, tailStartY);
+      for (let t = 0.1; t <= tailProgress; t += 0.08) {
+        const wave = Math.sin(t * 12 + time / 80) * 25;
+        const nx = tailStartX + (tailEndX - tailStartX) * t + Math.cos(t * Math.PI) * wave;
+        const ny = tailStartY + (tailEndY - tailStartY) * t + Math.sin(t * Math.PI) * wave;
+        ctx.lineTo(nx, ny);
+      }
+      ctx.stroke();
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = 'rgba(139, 92, 246, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(tailStartX, tailStartY);
+      for (let t = 0.1; t <= tailProgress; t += 0.08) {
+        const wave = Math.sin(t * 12 + time / 80) * 15;
+        const nx = tailStartX + (tailEndX - tailStartX) * t + Math.cos(t * Math.PI) * wave;
+        const ny = tailStartY + (tailEndY - tailStartY) * t + Math.sin(t * Math.PI) * wave;
+        ctx.lineTo(nx, ny);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'nightmare':
+      // ナイトメア - 闇の波と不気味な目
+      try {
+      ctx.save();
+      const nightmareProgress = effect.progress !== undefined ? effect.progress : 0;
+      const nightmareTargetX = (effect.targetX != null ? effect.targetX : targetX);
+      const nightmareTargetY = (effect.targetY != null ? effect.targetY : targetY);
+
+      const waveRadius = nightmareProgress * 180 + Math.sin(time / 100) * 20;
+      const gradient = ctx.createRadialGradient(nightmareTargetX, nightmareTargetY, 0, nightmareTargetX, nightmareTargetY, waveRadius);
+      gradient.addColorStop(0, 'rgba(59, 7, 100, 0.9)');
+      gradient.addColorStop(0.4, 'rgba(88, 28, 135, 0.7)');
+      gradient.addColorStop(0.7, 'rgba(139, 92, 246, 0.3)');
+      gradient.addColorStop(1, 'rgba(30, 27, 75, 0)');
+      ctx.fillStyle = gradient;
+      ctx.shadowBlur = 50;
+      ctx.shadowColor = 'rgba(124, 58, 237, 0.8)';
+      ctx.beginPath();
+      ctx.arc(nightmareTargetX, nightmareTargetY, waveRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 + time / 400;
+        const eyeX = nightmareTargetX + Math.cos(angle) * (60 + nightmareProgress * 40);
+        const eyeY = nightmareTargetY + Math.sin(angle) * (60 + nightmareProgress * 40);
+        const eyeScale = 0.8 + Math.sin(time / 200 + i) * 0.2;
+        ctx.fillStyle = 'rgba(254, 240, 138, 0.95)';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = 'rgba(250, 204, 21, 0.9)';
+        ctx.beginPath();
+        ctx.ellipse(eyeX, eyeY, 12 * eyeScale, 18 * eyeScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(30, 27, 75, 1)';
+        ctx.beginPath();
+        ctx.ellipse(eyeX, eyeY, 4, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'bagfoon_inferno':
+      // インフェルノ - 業火の渦が相手を飲み込む
+      try {
+      ctx.save();
+      const infProgress = effect.progress != null ? effect.progress : 0;
+      const infX = (effect.targetX != null ? effect.targetX : targetX);
+      const infY = (effect.targetY != null ? effect.targetY : targetY);
+      const infRadius = 40 + infProgress * 120 + Math.sin(time / 60) * 15;
+      const infGrad = ctx.createRadialGradient(infX, infY, 0, infX, infY, infRadius);
+      infGrad.addColorStop(0, 'rgba(255, 255, 220, 1)');
+      infGrad.addColorStop(0.15, 'rgba(255, 180, 0, 0.95)');
+      infGrad.addColorStop(0.4, 'rgba(255, 80, 0, 0.9)');
+      infGrad.addColorStop(0.7, 'rgba(220, 20, 0, 0.7)');
+      infGrad.addColorStop(1, 'rgba(120, 0, 0, 0)');
+      ctx.fillStyle = infGrad;
+      ctx.shadowBlur = 60;
+      ctx.shadowColor = 'rgba(255, 100, 0, 0.9)';
+      ctx.beginPath();
+      ctx.arc(infX, infY, infRadius, 0, Math.PI * 2);
+      ctx.fill();
+      for (let r = 0; r < 3; r++) {
+        const spiralR = infRadius * (0.3 + r * 0.35) + Math.sin(time / 40 + r * 2) * 12;
+        ctx.strokeStyle = `rgba(255, 200, 50, ${0.9 - r * 0.25})`;
+        ctx.lineWidth = 14 - r * 4;
+        ctx.beginPath();
+        for (let i = 0; i <= 36; i++) {
+          const a = (i / 36) * Math.PI * 4 + time / 80 + r * 1.5;
+          const x = infX + Math.cos(a) * spiralR;
+          const y = infY + Math.sin(a) * spiralR;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2 + time / 30;
+        const r = infRadius * 0.6 + Math.sin(time / 50 + i) * 20;
+        ctx.fillStyle = `rgba(255, 255, 200, ${0.9 - i * 0.03})`;
+        ctx.shadowBlur = 25;
+        ctx.beginPath();
+        ctx.arc(infX + Math.cos(a) * r, infY + Math.sin(a) * r, 8 + Math.sin(time / 20 + i) * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'bagfoon_flare_blitz':
+      // フレアブリッツ - 炎の軌道を残して突進し爆発
+      try {
+      ctx.save();
+      const fbProgress = effect.progress != null ? effect.progress : 0;
+      const fbStartX = (effect.startX != null ? effect.startX : targetX - 200);
+      const fbStartY = (effect.startY != null ? effect.startY : targetY);
+      const fbEndX = (effect.targetX != null ? effect.targetX : targetX);
+      const fbEndY = (effect.targetY != null ? effect.targetY : targetY);
+      const fbX = fbStartX + (fbEndX - fbStartX) * fbProgress;
+      const fbY = fbStartY + (fbEndY - fbStartY) * fbProgress;
+      ctx.shadowBlur = 45;
+      ctx.shadowColor = 'rgba(255, 150, 0, 0.95)';
+      for (let t = 0; t <= fbProgress; t += 0.08) {
+        const trailX = fbStartX + (fbEndX - fbStartX) * t;
+        const trailY = fbStartY + (fbEndY - fbStartY) * t;
+        const trailW = 35 + (1 - t) * 25 + Math.sin(time / 25) * 8;
+        const trailGrad = ctx.createRadialGradient(trailX, trailY, 0, trailX, trailY, trailW);
+        trailGrad.addColorStop(0, `rgba(255, 255, 200, ${0.9 * (1 - t)})`);
+        trailGrad.addColorStop(0.4, `rgba(255, 120, 0, ${0.8 * (1 - t)})`);
+        trailGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+        ctx.fillStyle = trailGrad;
+        ctx.beginPath();
+        ctx.arc(trailX, trailY, trailW, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const coreW = 50 + Math.sin(time / 50) * 15;
+      const coreGrad = ctx.createRadialGradient(fbX, fbY, 0, fbX, fbY, coreW);
+      coreGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      coreGrad.addColorStop(0.2, 'rgba(255, 220, 100, 0.95)');
+      coreGrad.addColorStop(0.5, 'rgba(255, 100, 0, 0.8)');
+      coreGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(fbX, fbY, coreW, 0, Math.PI * 2);
+      ctx.fill();
+      if (fbProgress >= 0.9) {
+        const burst = (fbProgress - 0.9) / 0.1;
+        const burstR = burst * 100;
+        ctx.strokeStyle = `rgba(255, 200, 0, ${1 - burst})`;
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.arc(fbEndX, fbEndY, burstR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'bagfoon_blazing_punch':
+      // れっかパンチ - 炎の拳が突進して炸裂
+      try {
+      ctx.save();
+      const bpProgress = effect.progress != null ? effect.progress : 0;
+      const bpStartX = (effect.startX != null ? effect.startX : targetX - 200);
+      const bpStartY = (effect.startY != null ? effect.startY : targetY);
+      const bpEndX = (effect.targetX != null ? effect.targetX : targetX);
+      const bpEndY = (effect.targetY != null ? effect.targetY : targetY);
+      const bpX = bpStartX + (bpEndX - bpStartX) * bpProgress;
+      const bpY = bpStartY + (bpEndY - bpStartY) * bpProgress;
+      const fistR = 45 + Math.sin(time / 30) * 10;
+      const fistGrad = ctx.createRadialGradient(bpX, bpY, 0, bpX, bpY, fistR);
+      fistGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      fistGrad.addColorStop(0.2, 'rgba(255, 200, 80, 0.95)');
+      fistGrad.addColorStop(0.5, 'rgba(255, 100, 0, 0.9)');
+      fistGrad.addColorStop(0.8, 'rgba(220, 50, 0, 0.7)');
+      fistGrad.addColorStop(1, 'rgba(180, 20, 0, 0)');
+      ctx.fillStyle = fistGrad;
+      ctx.shadowBlur = 50;
+      ctx.shadowColor = 'rgba(255, 150, 0, 0.95)';
+      ctx.beginPath();
+      ctx.arc(bpX, bpY, fistR, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 + time / 60;
+        const r = fistR * 0.8 + Math.sin(time / 40 + i) * 15;
+        ctx.fillStyle = 'rgba(255, 255, 220, 0.9)';
+        ctx.beginPath();
+        ctx.arc(bpX + Math.cos(a) * r, bpY + Math.sin(a) * r, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (bpProgress >= 0.85) {
+        const hit = (bpProgress - 0.85) / 0.15;
+        const hitR = hit * 80;
+        ctx.strokeStyle = `rgba(255, 180, 0, ${1 - hit})`;
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.arc(bpEndX, bpEndY, hitR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'bagfoon_explosion':
+      // ばくえん - 大爆発と衝撃波
+      try {
+      ctx.save();
+      const exProgress = effect.progress != null ? effect.progress : 0;
+      const exX = (effect.targetX != null ? effect.targetX : targetX);
+      const exY = (effect.targetY != null ? effect.targetY : targetY);
+      const exRadius = exProgress * 140 + Math.sin(time / 50) * 10;
+      const exGrad = ctx.createRadialGradient(exX, exY, 0, exX, exY, exRadius);
+      exGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      exGrad.addColorStop(0.1, 'rgba(255, 230, 150, 0.98)');
+      exGrad.addColorStop(0.25, 'rgba(255, 150, 0, 0.95)');
+      exGrad.addColorStop(0.5, 'rgba(255, 60, 0, 0.85)');
+      exGrad.addColorStop(0.75, 'rgba(200, 20, 0, 0.5)');
+      exGrad.addColorStop(1, 'rgba(100, 0, 0, 0)');
+      ctx.fillStyle = exGrad;
+      ctx.shadowBlur = 70;
+      ctx.shadowColor = 'rgba(255, 100, 0, 0.9)';
+      ctx.beginPath();
+      ctx.arc(exX, exY, exRadius, 0, Math.PI * 2);
+      ctx.fill();
+      for (let w = 0; w < 5; w++) {
+        const waveProgress = exProgress - w * 0.15;
+        if (waveProgress > 0) {
+          const waveR = exRadius * 0.5 + w * 35 + Math.sin(time / 80) * 8;
+          const alpha = Math.max(0, (1 - waveProgress * 1.2) * 0.8);
+          ctx.strokeStyle = `rgba(255, 180, 50, ${alpha})`;
+          ctx.lineWidth = 14 - w * 2;
+          ctx.beginPath();
+          ctx.arc(exX, exY, waveR, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      for (let i = 0; i < 30; i++) {
+        const a = (i / 30) * Math.PI * 2 + time / 100;
+        const r = exRadius * 0.7 + Math.sin(time / 30 + i) * 25;
+        ctx.fillStyle = `rgba(255, 255, 200, ${0.9 - exProgress * 0.5})`;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(exX + Math.cos(a) * r, exY + Math.sin(a) * r, 5 + Math.sin(time / 25 + i) * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
     default:
       break;
   }

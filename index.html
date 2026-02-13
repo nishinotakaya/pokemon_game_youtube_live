@@ -1143,6 +1143,102 @@
                             await new Promise(r => setTimeout(r, 18));
                         }
                         await new Promise(r => setTimeout(r, 700));
+                    } else if (move.effect === "bagfoon_inferno") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'bagfoon_inferno', target: isP1 ? 'p2' : 'p1', targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => prev && prev.type === 'bagfoon_inferno' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 25));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "bagfoon_flare_blitz") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'bagfoon_flare_blitz', target: isP1 ? 'p2' : 'p1', startX, startY, targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.025) {
+                            setActiveEffect(prev => prev && prev.type === 'bagfoon_flare_blitz' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 18));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "bagfoon_blazing_punch") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'bagfoon_blazing_punch', target: isP1 ? 'p2' : 'p1', startX, startY, targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.03) {
+                            setActiveEffect(prev => prev && prev.type === 'bagfoon_blazing_punch' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 16));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "bagfoon_explosion") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'bagfoon_explosion', target: isP1 ? 'p2' : 'p1', targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => prev && prev.type === 'bagfoon_explosion' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 28));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "dark_vortex") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'dark_vortex', target: isP1 ? 'p2' : 'p1', startX, startY, targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.025) {
+                            setActiveEffect(prev => prev && prev.type === 'dark_vortex' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "phantom_burst") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'phantom_burst', target: isP1 ? 'p2' : 'p1', targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => prev && prev.type === 'phantom_burst' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 25));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "shadow_tail") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'shadow_tail', target: isP1 ? 'p2' : 'p1', startX, startY, targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.03) {
+                            setActiveEffect(prev => prev && prev.type === 'shadow_tail' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 18));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "nightmare") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'nightmare', target: isP1 ? 'p2' : 'p1', targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => prev && prev.type === 'nightmare' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 30));
+                        }
+                        await new Promise(r => setTimeout(r, 700));
                     } else {
                         setActiveEffect({ type: move.type, target: isP1 ? 'p2' : 'p1' });
                     }
@@ -1957,7 +2053,7 @@
                                     key={move.name}
                                     onClick={() => executeTurn("player", idx)}
                                     disabled={turn !== "player" || busy || over}
-                                    className={`p-3 md:p-4 text-xs md:text-sm font-bold rounded-xl border-2 transition-all pixel-border whitespace-nowrap ${turn === "player" && !busy && !over ? "bg-slate-700 text-white border-slate-500 hover:border-yellow-400 active:translate-y-1" : "bg-slate-800 text-slate-600 border-transparent opacity-50"}`}
+                                    className={`p-2 md:p-3 text-[10px] md:text-xs font-bold rounded-xl border-2 transition-all pixel-border break-words text-center min-w-0 leading-tight ${turn === "player" && !busy && !over ? "bg-slate-700 text-white border-slate-500 hover:border-yellow-400 active:translate-y-1" : "bg-slate-800 text-slate-600 border-transparent opacity-50"}`}
                                 >
                                     {move.name}
                                 </button>
