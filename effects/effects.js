@@ -3435,6 +3435,289 @@ window.drawEffect = function (ctx, effect, targetX, targetY, width, height) {
       } catch (e) { try { ctx.restore(); } catch (_) {} }
       break;
 
+    case 'latias_mist_burst':
+      try {
+      ctx.save();
+      const mbProgress = effect.progress != null ? effect.progress : 0;
+      const mbX = (effect.targetX != null ? effect.targetX : targetX);
+      const mbY = (effect.targetY != null ? effect.targetY : targetY);
+      const mbR = 30 + mbProgress * 100 + Math.sin(time / 70) * 12;
+      const mbGrad = ctx.createRadialGradient(mbX, mbY, 0, mbX, mbY, mbR);
+      mbGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      mbGrad.addColorStop(0.2, 'rgba(252, 165, 165, 0.9)');
+      mbGrad.addColorStop(0.5, 'rgba(236, 72, 153, 0.75)');
+      mbGrad.addColorStop(0.8, 'rgba(168, 85, 247, 0.5)');
+      mbGrad.addColorStop(1, 'rgba(139, 92, 246, 0)');
+      ctx.fillStyle = mbGrad;
+      ctx.shadowBlur = 55;
+      ctx.shadowColor = 'rgba(236, 72, 153, 0.9)';
+      ctx.beginPath();
+      ctx.arc(mbX, mbY, mbR, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 20; i++) {
+        const a = (i / 20) * Math.PI * 2 + time / 120 + mbProgress * 3;
+        const r = mbR * 0.5 + Math.sin(time / 50 + i) * 25;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.95 - mbProgress * 0.4})`;
+        ctx.beginPath();
+        ctx.arc(mbX + Math.cos(a) * r, mbY + Math.sin(a) * r, 12 + Math.sin(time / 30 + i) * 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'latias_dragon_soul':
+      try {
+      ctx.save();
+      const dsProgress = effect.progress != null ? effect.progress : 0;
+      const dsStartX = (effect.startX != null ? effect.startX : targetX - 220);
+      const dsStartY = (effect.startY != null ? effect.startY : targetY);
+      const dsEndX = (effect.targetX != null ? effect.targetX : targetX);
+      const dsEndY = (effect.targetY != null ? effect.targetY : targetY);
+      const dsX = dsStartX + (dsEndX - dsStartX) * dsProgress;
+      const dsY = dsStartY + (dsEndY - dsStartY) * dsProgress;
+      const soulR = 55 + Math.sin(time / 40) * 15;
+      const soulGrad = ctx.createRadialGradient(dsX, dsY, 0, dsX, dsY, soulR);
+      soulGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      soulGrad.addColorStop(0.15, 'rgba(251, 207, 232, 0.95)');
+      soulGrad.addColorStop(0.4, 'rgba(236, 72, 153, 0.85)');
+      soulGrad.addColorStop(0.7, 'rgba(168, 85, 247, 0.6)');
+      soulGrad.addColorStop(1, 'rgba(139, 92, 246, 0)');
+      ctx.fillStyle = soulGrad;
+      ctx.shadowBlur = 60;
+      ctx.shadowColor = 'rgba(236, 72, 153, 0.95)';
+      ctx.beginPath();
+      ctx.arc(dsX, dsY, soulR, 0, Math.PI * 2);
+      ctx.fill();
+      for (let r = 0; r < 4; r++) {
+        const ringR = soulR * (0.4 + r * 0.25) + Math.sin(time / 60 + r) * 10;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 - r * 0.15 - dsProgress * 0.2})`;
+        ctx.lineWidth = 8 - r * 2;
+        ctx.beginPath();
+        ctx.arc(dsX, dsY, ringR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'latias_mystic_dance':
+      try {
+      ctx.save();
+      const mdProgress = effect.progress != null ? effect.progress : 0;
+      const mdX = (effect.targetX != null ? effect.targetX : targetX);
+      const mdY = (effect.targetY != null ? effect.targetY : targetY);
+      for (let w = 0; w < 6; w++) {
+        const waveR = (mdProgress * 1.2 - w * 0.15) * 90 + Math.sin(time / 100 + w) * 15;
+        if (waveR > 0) {
+          const alpha = Math.max(0, (1 - mdProgress) * 0.85 - w * 0.1);
+          ctx.strokeStyle = `rgba(251, 207, 232, ${alpha})`;
+          ctx.lineWidth = 12 - w * 2;
+          ctx.shadowBlur = 30;
+          ctx.shadowColor = 'rgba(236, 72, 153, 0.8)';
+          ctx.beginPath();
+          ctx.arc(mdX, mdY, waveR, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2 + time / 80 + mdProgress * 2;
+        const r = 40 + mdProgress * 70 + Math.sin(time / 40 + i) * 20;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.9 - mdProgress * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(mdX + Math.cos(a) * r, mdY + Math.sin(a) * r, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'latias_aura_cannon':
+      try {
+      ctx.save();
+      const acProgress = effect.progress != null ? effect.progress : 0;
+      const acStartX = (effect.startX != null ? effect.startX : targetX - 200);
+      const acStartY = (effect.startY != null ? effect.startY : targetY);
+      const acEndX = (effect.targetX != null ? effect.targetX : targetX);
+      const acEndY = (effect.targetY != null ? effect.targetY : targetY);
+      const acX = acStartX + (acEndX - acStartX) * acProgress;
+      const acY = acStartY + (acEndY - acStartY) * acProgress;
+      const beamW = 50 + Math.sin(time / 35) * 12;
+      const beamGrad = ctx.createLinearGradient(acStartX, acStartY, acX, acY);
+      beamGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+      beamGrad.addColorStop(0.3, 'rgba(251, 207, 232, 0.95)');
+      beamGrad.addColorStop(0.6, 'rgba(236, 72, 153, 0.9)');
+      beamGrad.addColorStop(1, 'rgba(168, 85, 247, 0.8)');
+      ctx.strokeStyle = beamGrad;
+      ctx.lineWidth = beamW;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 50;
+      ctx.shadowColor = 'rgba(236, 72, 153, 0.95)';
+      ctx.beginPath();
+      ctx.moveTo(acStartX, acStartY);
+      ctx.lineTo(acX, acY);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.beginPath();
+      ctx.arc(acX, acY, beamW * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'latios_luster_purge':
+      try {
+      ctx.save();
+      const lpProgress = effect.progress != null ? effect.progress : 0;
+      const lpX = (effect.targetX != null ? effect.targetX : targetX);
+      const lpY = (effect.targetY != null ? effect.targetY : targetY);
+      const lpR = 25 + lpProgress * 110 + Math.sin(time / 60) * 10;
+      const lpGrad = ctx.createRadialGradient(lpX, lpY, 0, lpX, lpY, lpR);
+      lpGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      lpGrad.addColorStop(0.15, 'rgba(191, 219, 254, 0.95)');
+      lpGrad.addColorStop(0.4, 'rgba(59, 130, 246, 0.9)');
+      lpGrad.addColorStop(0.7, 'rgba(37, 99, 235, 0.6)');
+      lpGrad.addColorStop(1, 'rgba(29, 78, 216, 0)');
+      ctx.fillStyle = lpGrad;
+      ctx.shadowBlur = 65;
+      ctx.shadowColor = 'rgba(59, 130, 246, 0.95)';
+      ctx.beginPath();
+      ctx.arc(lpX, lpY, lpR, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2 + time / 90 + lpProgress * 4;
+        const r = lpR * 0.6 + Math.sin(time / 45 + i) * 22;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.95 - lpProgress * 0.35})`;
+        ctx.beginPath();
+        ctx.arc(lpX + Math.cos(a) * r, lpY + Math.sin(a) * r, 10 + Math.sin(time / 25 + i) * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'latios_dragon_breath':
+      try {
+      ctx.save();
+      const dbProgress = effect.progress != null ? effect.progress : 0;
+      const dbStartX = (effect.startX != null ? effect.startX : targetX - 200);
+      const dbStartY = (effect.startY != null ? effect.startY : targetY);
+      const dbEndX = (effect.targetX != null ? effect.targetX : targetX);
+      const dbEndY = (effect.targetY != null ? effect.targetY : targetY);
+      const dbX = dbStartX + (dbEndX - dbStartX) * dbProgress;
+      const dbY = dbStartY + (dbEndY - dbStartY) * dbProgress;
+      const breathW = 60 + Math.sin(time / 30) * 15;
+      const breathGrad = ctx.createRadialGradient(dbX, dbY, 0, dbX, dbY, breathW);
+      breathGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      breathGrad.addColorStop(0.2, 'rgba(147, 197, 253, 0.95)');
+      breathGrad.addColorStop(0.5, 'rgba(59, 130, 246, 0.9)');
+      breathGrad.addColorStop(0.8, 'rgba(37, 99, 235, 0.6)');
+      breathGrad.addColorStop(1, 'rgba(29, 78, 216, 0)');
+      ctx.fillStyle = breathGrad;
+      ctx.shadowBlur = 55;
+      ctx.shadowColor = 'rgba(59, 130, 246, 0.9)';
+      ctx.beginPath();
+      ctx.arc(dbX, dbY, breathW, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(dbStartX, dbStartY);
+      ctx.lineTo(dbX, dbY);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'latios_psycho_boost':
+      try {
+      ctx.save();
+      const pbProgress = effect.progress != null ? effect.progress : 0;
+      const pbStartX = (effect.startX != null ? effect.startX : targetX - 220);
+      const pbStartY = (effect.startY != null ? effect.startY : targetY);
+      const pbEndX = (effect.targetX != null ? effect.targetX : targetX);
+      const pbEndY = (effect.targetY != null ? effect.targetY : targetY);
+      const pbX = pbStartX + (pbEndX - pbStartX) * pbProgress;
+      const pbY = pbStartY + (pbEndY - pbStartY) * pbProgress;
+      const boostW = 70 + Math.sin(time / 25) * 18;
+      const boostGrad = ctx.createRadialGradient(pbX, pbY, 0, pbX, pbY, boostW);
+      boostGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      boostGrad.addColorStop(0.1, 'rgba(191, 219, 254, 0.98)');
+      boostGrad.addColorStop(0.35, 'rgba(59, 130, 246, 0.95)');
+      boostGrad.addColorStop(0.6, 'rgba(99, 102, 241, 0.8)');
+      boostGrad.addColorStop(1, 'rgba(79, 70, 229, 0)');
+      ctx.fillStyle = boostGrad;
+      ctx.shadowBlur = 70;
+      ctx.shadowColor = 'rgba(99, 102, 241, 0.95)';
+      ctx.beginPath();
+      ctx.arc(pbX, pbY, boostW, 0, Math.PI * 2);
+      ctx.fill();
+      for (let t = 0; t <= pbProgress; t += 0.06) {
+        const tx = pbStartX + (pbEndX - pbStartX) * t;
+        const ty = pbStartY + (pbEndY - pbStartY) * t;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * (1 - t)})`;
+        ctx.lineWidth = 20;
+        ctx.beginPath();
+        ctx.arc(tx, ty, 15, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
+    case 'latios_outrage':
+      try {
+      ctx.save();
+      const orProgress = effect.progress != null ? effect.progress : 0;
+      const orX = (effect.targetX != null ? effect.targetX : targetX);
+      const orY = (effect.targetY != null ? effect.targetY : targetY);
+      const orR = orProgress * 130 + Math.sin(time / 50) * 15;
+      const orGrad = ctx.createRadialGradient(orX, orY, 0, orX, orY, orR);
+      orGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      orGrad.addColorStop(0.12, 'rgba(147, 197, 253, 0.98)');
+      orGrad.addColorStop(0.35, 'rgba(59, 130, 246, 0.9)');
+      orGrad.addColorStop(0.6, 'rgba(37, 99, 235, 0.7)');
+      orGrad.addColorStop(0.85, 'rgba(29, 78, 216, 0.4)');
+      orGrad.addColorStop(1, 'rgba(30, 64, 175, 0)');
+      ctx.fillStyle = orGrad;
+      ctx.shadowBlur = 75;
+      ctx.shadowColor = 'rgba(59, 130, 246, 0.95)';
+      ctx.beginPath();
+      ctx.arc(orX, orY, orR, 0, Math.PI * 2);
+      ctx.fill();
+      for (let w = 0; w < 6; w++) {
+        const waveP = orProgress - w * 0.12;
+        if (waveP > 0) {
+          const waveR = orR * 0.4 + w * 28 + Math.sin(time / 70) * 10;
+          const alpha = Math.max(0, (1 - waveP * 1.1) * 0.85);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+          ctx.lineWidth = 16 - w * 2;
+          ctx.beginPath();
+          ctx.arc(orX, orY, waveR, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      for (let i = 0; i < 28; i++) {
+        const a = (i / 28) * Math.PI * 2 + time / 80;
+        const r = orR * 0.65 + Math.sin(time / 35 + i) * 28;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.9 - orProgress * 0.4})`;
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(orX + Math.cos(a) * r, orY + Math.sin(a) * r, 6 + Math.sin(time / 20 + i) * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      } catch (e) { try { ctx.restore(); } catch (_) {} }
+      break;
+
     default:
       break;
   }

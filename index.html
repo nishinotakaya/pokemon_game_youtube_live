@@ -1191,6 +1191,102 @@
                             await new Promise(r => setTimeout(r, 28));
                         }
                         await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "latias_mist_burst") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'latias_mist_burst', target: isP1 ? 'p2' : 'p1', targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.022) {
+                            setActiveEffect(prev => prev && prev.type === 'latias_mist_burst' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 24));
+                        }
+                        await new Promise(r => setTimeout(r, 550));
+                    } else if (move.effect === "latias_dragon_soul") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'latias_dragon_soul', target: isP1 ? 'p2' : 'p1', startX, startY, targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.028) {
+                            setActiveEffect(prev => prev && prev.type === 'latias_dragon_soul' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 20));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "latias_mystic_dance") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'latias_mystic_dance', target: isP1 ? 'p2' : 'p1', targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => prev && prev.type === 'latias_mystic_dance' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 26));
+                        }
+                        await new Promise(r => setTimeout(r, 550));
+                    } else if (move.effect === "latias_aura_cannon") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'latias_aura_cannon', target: isP1 ? 'p2' : 'p1', startX, startY, targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.025) {
+                            setActiveEffect(prev => prev && prev.type === 'latias_aura_cannon' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 18));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "latios_luster_purge") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'latios_luster_purge', target: isP1 ? 'p2' : 'p1', targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.02) {
+                            setActiveEffect(prev => prev && prev.type === 'latios_luster_purge' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 25));
+                        }
+                        await new Promise(r => setTimeout(r, 600));
+                    } else if (move.effect === "latios_dragon_breath") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'latios_dragon_breath', target: isP1 ? 'p2' : 'p1', startX, startY, targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.03) {
+                            setActiveEffect(prev => prev && prev.type === 'latios_dragon_breath' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 18));
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    } else if (move.effect === "latios_psycho_boost") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const startX = isP1 ? w * 0.25 : w * 0.75;
+                        const startY = isP1 ? h * 0.7 : h * 0.25;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'latios_psycho_boost', target: isP1 ? 'p2' : 'p1', startX, startY, targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.022) {
+                            setActiveEffect(prev => prev && prev.type === 'latios_psycho_boost' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 22));
+                        }
+                        await new Promise(r => setTimeout(r, 550));
+                    } else if (move.effect === "latios_outrage") {
+                        const w = canvasRef.current?.width || 640;
+                        const h = canvasRef.current?.height || 360;
+                        const targetX = isP1 ? w * 0.75 : w * 0.25;
+                        const targetY = isP1 ? h * 0.25 : h * 0.7;
+                        setActiveEffect({ type: 'latios_outrage', target: isP1 ? 'p2' : 'p1', targetX, targetY, progress: 0 });
+                        for (let p = 0; p <= 1; p += 0.018) {
+                            setActiveEffect(prev => prev && prev.type === 'latios_outrage' ? { ...prev, progress: p } : prev);
+                            await new Promise(r => setTimeout(r, 30));
+                        }
+                        await new Promise(r => setTimeout(r, 650));
                     } else if (move.effect === "dark_vortex") {
                         const w = canvasRef.current?.width || 640;
                         const h = canvasRef.current?.height || 360;

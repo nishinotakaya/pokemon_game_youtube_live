@@ -92,7 +92,19 @@ const MOVES_DATA = {
   "インフェルノ": { power: 110, acc: 85, type: "fire", effect: "bagfoon_inferno" },
   "フレアブリッツ": { power: 120, acc: 100, type: "fire", effect: "bagfoon_flare_blitz" },
   "れっかパンチ": { power: 100, acc: 100, type: "fighting", effect: "bagfoon_blazing_punch" },
-  "ばくえん": { power: 95, acc: 100, type: "fire", effect: "bagfoon_explosion" }
+  "ばくえん": { power: 95, acc: 100, type: "fire", effect: "bagfoon_explosion" },
+
+  // ラティアスの技（専用エフェクト）
+  "ミストバースト": { power: 95, acc: 100, type: "psychic", effect: "latias_mist_burst" },
+  "ドラゴンソウル": { power: 100, acc: 95, type: "dragon", effect: "latias_dragon_soul" },
+  "しんぴのまい": { power: 90, acc: 100, type: "psychic", effect: "latias_mystic_dance" },
+  "はどうほう": { power: 110, acc: 90, type: "dragon", effect: "latias_aura_cannon" },
+
+  // ラティオスの技（専用エフェクト）
+  "ラスターパージ": { power: 100, acc: 100, type: "psychic", effect: "latios_luster_purge" },
+  "ドラゴンブレス": { power: 95, acc: 100, type: "dragon", effect: "latios_dragon_breath" },
+  "サイコブースト": { power: 120, acc: 90, type: "psychic", effect: "latios_psycho_boost" },
+  "りゅうのいかり": { power: 110, acc: 100, type: "dragon", effect: "latios_outrage" }
 };
 
 // タイプ相性チャート
