@@ -341,10 +341,10 @@ window.Game.Data.GymLeaders = {
         image: LEADER_SPRITES.giovanni,
         badge: 'tokiwa_badge', badgeName: 'グリーンバッジ', type: 'ground', reward: 10000,
         team: [
-            { pokemon: 'nidoqueen', level: 44 },
-            { pokemon: 'nidoking', level: 45 },
-            { pokemon: 'golem', level: 43 },
-            { pokemon: 'rhydon', level: 50 }
+            { pokemon: 'nidoqueen', level: 35 },
+            { pokemon: 'nidoking', level: 37 },
+            { pokemon: 'golem', level: 36 },
+            { pokemon: 'rhydon', level: 40 }
         ],
         dialogue: {
             before: 'わたしが さいごの ジムリーダー サカキだ...\nちからを みせてみろ',

@@ -2101,7 +2101,15 @@
                         badges={badges}
                         onEncounter={handleEncounter}
                         onTrainerBattle={handleTrainerBattle}
-                        onGym={(gId) => { setGymId(gId); navigate('gym_intro'); }}
+                        onGym={(gId) => {
+                            const gym = GymLeaders[gId];
+                            if (gym && badges.includes(gym.badge)) {
+                                setInteractionMessage(`${gym.leader.name}「おまえは もう ${gym.badgeName}を もっているぞ！\nつぎの まちへ すすむのだ！」`);
+                                setTimeout(() => setInteractionMessage(null), 3000);
+                                return;
+                            }
+                            setGymId(gId); navigate('gym_intro');
+                        }}
                         onShop={(shopTownId) => { setCurrentTownId(shopTownId || currentTownId); navigate('shop'); }}
                         onPokecenter={() => { setHealed(false); navigate('pokecenter'); }}
                         onMapChange={handleMapChange}
