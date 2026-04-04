@@ -1734,6 +1734,7 @@
             const handleReportDone = () => {
                 // タイトルに戻る
                 setScreen('title');
+                setHasSaveData(true);
                 setPlayerId(null);
                 setParty([]);
                 setAllPokemons([]);
@@ -1743,6 +1744,7 @@
                 setCurrentTownId(null);
                 setCurrentRouteId(null);
                 setCurrentMapId(null);
+                screenHistory.current = [];
             };
 
             const handleSelectTown = (townId) => {
