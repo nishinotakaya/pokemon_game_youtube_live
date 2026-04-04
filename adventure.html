@@ -425,22 +425,84 @@
                 }
             };
 
-            // タッチ移動（キャンバス上をスワイプ or タップで移動）
+            // タッチ→目的地まで自動歩行
             const touchStartRef = useRef(null);
-            const touchMoveTimerRef = useRef(null);
+            const autoWalkRef = useRef(null); // { path: [{x,y}], index: 0 }
+
+            // 簡易BFSパスファインディング
+            const findPath = useCallback((sx, sy, gx, gy) => {
+                if (sx === gx && sy === gy) return [];
+                if (!mapData) return null;
+                const w = mapData.width, h = mapData.height;
+                const visited = new Set();
+                const queue = [{ x: sx, y: sy, path: [] }];
+                visited.add(`${sx},${sy}`);
+                const dirs = [[0,1,0],[0,-1,3],[-1,0,1],[1,0,2]]; // dx,dy,dir
+
+                while (queue.length > 0) {
+                    const cur = queue.shift();
+                    for (const [dx, dy, dir] of dirs) {
+                        const nx = cur.x + dx, ny = cur.y + dy;
+                        const key = `${nx},${ny}`;
+                        if (visited.has(key)) continue;
+                        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+                        visited.add(key);
+                        const newPath = [...cur.path, { dx, dy, dir }];
+                        if (nx === gx && ny === gy) return newPath;
+                        if (canWalk(nx, ny)) {
+                            queue.push({ x: nx, y: ny, path: newPath });
+                        }
+                    }
+                    if (queue.length > 2000) return null; // 探索上限
+                }
+                return null;
+            }, [mapData, canWalk]);
+
+            // 自動歩行ループ
+            useEffect(() => {
+                if (!autoWalkRef.current) return;
+                const walk = autoWalkRef.current;
+                if (walk.index >= walk.path.length) {
+                    autoWalkRef.current = null;
+                    return;
+                }
+                const step = walk.path[walk.index];
+                const timer = setTimeout(() => {
+                    tryMove(step.dx, step.dy, step.dir);
+                    walk.index++;
+                    // 再レンダーをトリガー
+                    autoWalkRef.current = { ...walk };
+                }, 160);
+                return () => clearTimeout(timer);
+            }, [playerPos, autoWalkRef.current?.index]);
+
+            // タッチ座標→マップタイル座標変換
+            const touchToTile = useCallback((touchX, touchY) => {
+                const canvas = canvasRef.current;
+                if (!canvas) return null;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const canvasX = (touchX - rect.left) * scaleX;
+                const canvasY = (touchY - rect.top) * scaleY;
+                const ts = MR.TILE_SIZE;
+                const camX = playerPos.x * ts - canvas.width / 2 + ts / 2;
+                const camY = playerPos.y * ts - canvas.height / 2 + ts / 2;
+                return {
+                    x: Math.floor((canvasX + camX) / ts),
+                    y: Math.floor((canvasY + camY) / ts)
+                };
+            }, [playerPos]);
 
             const handleTouchStart = useCallback((e) => {
                 e.preventDefault();
+                autoWalkRef.current = null; // 歩行中に触れたら停止
                 const touch = e.touches[0];
                 touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
             }, []);
 
             const handleTouchEnd = useCallback((e) => {
                 e.preventDefault();
-                if (touchMoveTimerRef.current) {
-                    clearInterval(touchMoveTimerRef.current);
-                    touchMoveTimerRef.current = null;
-                }
                 if (!touchStartRef.current) return;
                 const touch = e.changedTouches[0];
                 const dx = touch.clientX - touchStartRef.current.x;
@@ -449,10 +511,19 @@
                 const elapsed = Date.now() - touchStartRef.current.time;
 
                 if (dist < 15 && elapsed < 300) {
-                    // 短いタップ = はなす（Aボタン）
+                    // 短タップ = はなす
                     tryInteract();
+                } else if (dist < 15 && elapsed >= 300) {
+                    // 長押し = タッチ位置まで自動歩行
+                    const tile = touchToTile(touch.clientX, touch.clientY);
+                    if (tile) {
+                        const path = findPath(playerPos.x, playerPos.y, tile.x, tile.y);
+                        if (path && path.length > 0) {
+                            autoWalkRef.current = { path, index: 0 };
+                        }
+                    }
                 } else if (dist >= 15) {
-                    // スワイプ方向に1歩移動
+                    // スワイプ = 1歩移動
                     if (Math.abs(dx) > Math.abs(dy)) {
                         dx > 0 ? tryMove(1, 0, 2) : tryMove(-1, 0, 1);
                     } else {
@@ -460,7 +531,7 @@
                     }
                 }
                 touchStartRef.current = null;
-            }, [tryMove, tryInteract]);
+            }, [tryMove, tryInteract, touchToTile, findPath, playerPos]);
 
             const handleTouchMove = useCallback((e) => {
                 e.preventDefault();
@@ -567,7 +638,7 @@
                             ← → ↑ ↓ いどう / スペース はなす / P てもち
                         </div>
                         <div className="text-xs text-slate-500 text-center mt-2 md:hidden">
-                            マップをスワイプ or パッドで いどう / タップで はなす
+                            スワイプ: 1歩 / 長押し: そこまで歩く / タップ: はなす
                         </div>
                     </div>
                 </div>
