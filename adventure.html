@@ -1446,12 +1446,24 @@
                     await reloadData(pid);
                     const prog = await Repo.getProgress(pid);
                     const townId = prog?.currentTown || 'masara_town';
-                    if (window.Game.Data.Maps[townId]) {
+                    const mapId = prog?.currentMapId || townId;
+                    const savedPos = prog?.playerPos || null;
+
+                    setCurrentTownId(townId);
+
+                    if (window.Game.Data.Maps[mapId]) {
+                        const m = window.Game.Data.Maps[mapId];
+                        setCurrentMapId(mapId);
+                        const pos = savedPos || m?.playerStart || { x: 7, y: 10 };
+                        setMapEntryPos(pos);
+                        setPlayerMapPos(pos);
+                        navigate('rpg_map');
+                    } else if (window.Game.Data.Maps[townId]) {
                         const m = window.Game.Data.Maps[townId];
                         setCurrentMapId(townId);
-                        setCurrentTownId(townId);
-                        setMapEntryPos(null);
-                        setPlayerMapPos(m?.playerStart || { x: 7, y: 10 });
+                        const pos = savedPos || m?.playerStart || { x: 7, y: 10 };
+                        setMapEntryPos(pos);
+                        setPlayerMapPos(pos);
                         navigate('rpg_map');
                     } else {
                         navigate('world_map');
@@ -1477,8 +1489,12 @@
 
             const handleReport = async () => {
                 if (!playerId) return;
-                // 現在のタウンを保存
-                await Repo.updateProgress(playerId, { currentTown: currentTownId || 'masara_town' });
+                // 現在のタウン・マップ・位置を保存
+                await Repo.updateProgress(playerId, {
+                    currentTown: currentTownId || 'masara_town',
+                    currentMapId: currentMapId || currentTownId || 'masara_town',
+                    playerPos: playerMapPos || null
+                });
                 // ポケモンのHPを保存（現在のパーティ状態）
                 for (const p of party) {
                     await Repo.updatePokemon(p.id, {
