@@ -1297,12 +1297,17 @@
         };
 
         // ===== バトル結果画面 =====
-        const BattleResultScreen = ({ result, expGained, leveledUp, pokemon, evolvedTo, evolvedToId, onContinue }) => (
+        const BattleResultScreen = ({ result, expGained, leveledUp, pokemon, evolvedTo, evolvedToId, nextPokemonName, onContinue }) => (
             <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
-                <h2 className={`text-3xl mb-4 ${result === 'win' ? 'text-yellow-400' : result === 'caught' ? 'text-green-400' : 'text-red-400'}`}>
-                    {result === 'win' ? '勝利！' : result === 'caught' ? 'つかまえた！' : '敗北...'}
+                <h2 className={`text-3xl mb-4 ${result === 'win' || result === 'next' ? 'text-yellow-400' : result === 'caught' ? 'text-green-400' : 'text-red-400'}`}>
+                    {result === 'win' ? '勝利！' : result === 'next' ? 'たおした！' : result === 'caught' ? 'つかまえた！' : '敗北...'}
                 </h2>
-                {(result === 'win' || result === 'caught') && expGained > 0 && (
+                {result === 'next' && nextPokemonName && (
+                    <div className="mb-4 bg-red-900/30 border border-red-700 rounded-xl p-3">
+                        <p className="text-lg text-red-300">あいては {nextPokemonName}を くりだしてきた！</p>
+                    </div>
+                )}
+                {(result === 'win' || result === 'caught' || result === 'next') && expGained > 0 && (
                     <div className="mb-4">
                         <p className="text-lg">{pokemon?.name}は {expGained}EXP もらった！</p>
                         {leveledUp && <p className="text-yellow-400 text-xl mt-2 levelup-glow">レベルアップ！ Lv.{pokemon?.level}</p>}
@@ -1323,8 +1328,8 @@
                     </div>
                 )}
                 <button onClick={onContinue}
-                    className="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-2xl font-bold text-xl border-4 border-blue-400 hover:border-yellow-400 transition-all">
-                    つぎへ
+                    className={`${result === 'next' ? 'bg-red-600 hover:bg-red-500 border-red-400' : 'bg-blue-600 hover:bg-blue-500 border-blue-400'} px-8 py-3 rounded-2xl font-bold text-xl border-4 hover:border-yellow-400 transition-all`}>
+                    {result === 'next' ? 'つぎのポケモンと バトル！' : 'つぎへ'}
                 </button>
             </div>
         );
@@ -1531,6 +1536,7 @@
             const [battleResult, setBattleResult] = useState(null);
             const [gymId, setGymId] = useState(null);
             const [eliteIndex, setEliteIndex] = useState(0);
+            const [trainerTeamIndex, setTrainerTeamIndex] = useState(0); // トレーナーの何匹目か
             const [healed, setHealed] = useState(false);
             const [dialogueQueue, setDialogueQueue] = useState([]);
             const [currentDialogue, setCurrentDialogue] = useState(null);
@@ -1732,6 +1738,7 @@
             const handleTrainerIntroBattle = () => {
                 const trainer = Trainers[battleTrainerId];
                 if (!trainer) return;
+                setTrainerTeamIndex(0);
                 const first = trainer.team[0];
                 const pokemon = Leveling.createPokemon(first.pokemon, first.level);
                 setBattleOpponent(pokemon);
@@ -1741,6 +1748,7 @@
             const handleGymChallenge = () => {
                 const gym = GymLeaders[gymId];
                 if (!gym) return;
+                setTrainerTeamIndex(0);
                 const first = gym.team[0];
                 const pokemon = Leveling.createPokemon(first.pokemon, first.level);
                 setBattleOpponent(pokemon);
@@ -1750,6 +1758,7 @@
             };
 
             const handleEliteChallenge = () => {
+                setTrainerTeamIndex(0);
                 const opponent = eliteIndex < EliteFour.length ? EliteFour[eliteIndex] : Champion;
                 const first = opponent.team[0];
                 const pokemon = Leveling.createPokemon(first.pokemon, first.level);
@@ -1816,7 +1825,39 @@
                     });
                 }
 
-                // トレーナー撃破記録 & お金
+                // トレーナーの次のポケモンチェック
+                const getTeam = () => {
+                    if (battleType === 'trainer' && battleTrainerId) return Trainers[battleTrainerId]?.team;
+                    if (battleType === 'gym' && gymId) return GymLeaders[gymId]?.team;
+                    if (battleType === 'elite') {
+                        const opp = eliteIndex < EliteFour.length ? EliteFour[eliteIndex] : Champion;
+                        return opp?.team;
+                    }
+                    return null;
+                };
+                const team = getTeam();
+                const nextIndex = trainerTeamIndex + 1;
+
+                if (team && nextIndex < team.length) {
+                    // まだ次のポケモンがいる → 次のバトルへ
+                    await reloadData(playerId);
+                    setTrainerTeamIndex(nextIndex);
+                    const next = team[nextIndex];
+                    const nextPokemon = Leveling.createPokemon(next.pokemon, next.level);
+                    setBattleOpponent(nextPokemon);
+                    setBattleResult({
+                        result: 'next',
+                        expGained,
+                        leveledUp: updated.leveledUp,
+                        pokemon: { ...lead, level: updated.level },
+                        evolvedTo: evolvedTo ? POKEMON_DATA[evolvedTo]?.name : null,
+                        nextPokemonName: nextPokemon.name
+                    });
+                    setScreen('battle_result');
+                    return;
+                }
+
+                // 全員倒した → 報酬・記録
                 if (battleTrainerId && battleType === 'trainer') {
                     const trainer = Trainers[battleTrainerId];
                     await Repo.addDefeatedTrainer(playerId, battleTrainerId);
@@ -1825,7 +1866,6 @@
                     }
                 }
 
-                // ジム勝利
                 if (battleType === 'gym' && gymId) {
                     const gym = GymLeaders[gymId];
                     if (gym) {
@@ -1834,7 +1874,6 @@
                     }
                 }
 
-                // 四天王/チャンピオン
                 if (battleType === 'elite') {
                     const opponent = eliteIndex < EliteFour.length ? EliteFour[eliteIndex] : Champion;
                     if (opponent.reward) {
@@ -1902,6 +1941,12 @@
             };
 
             const handleBattleResultContinue = () => {
+                // 次のポケモンがいる場合 → そのまま次のバトルへ
+                if (battleResult?.result === 'next') {
+                    setScreen('battle');
+                    return;
+                }
+
                 if (battleType === 'elite' && battleResult?.result === 'win') {
                     if (eliteIndex < EliteFour.length) {
                         setEliteIndex(eliteIndex + 1);
