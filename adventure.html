@@ -1330,7 +1330,7 @@
         };
 
         // ===== バトル結果画面 =====
-        const BattleResultScreen = ({ result, expGained, leveledUp, pokemon, evolvedTo, evolvedToId, nextPokemonName, onContinue }) => (
+        const BattleResultScreen = ({ result, expGained, leveledUp, pokemon, evolvedTo, evolvedToId, nextPokemonName, badgeInfo, trainerAfter, onContinue }) => (
             <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
                 <h2 className={`text-3xl mb-4 ${result === 'win' || result === 'next' ? 'text-yellow-400' : result === 'caught' ? 'text-green-400' : 'text-red-400'}`}>
                     {result === 'win' ? '勝利！' : result === 'next' ? 'たおした！' : result === 'caught' ? 'つかまえた！' : '敗北...'}
@@ -1358,6 +1358,35 @@
                         <p className="text-2xl font-black text-yellow-400 mt-2" style={{ textShadow: '0 0 20px rgba(251,191,36,0.6)' }}>
                             {evolvedTo}に しんかした！
                         </p>
+                    </div>
+                )}
+                {/* トレーナー勝利台詞 */}
+                {trainerAfter && result === 'win' && (
+                    <div className="my-4 bg-slate-700/50 border border-slate-600 rounded-xl p-3">
+                        <p className="text-sm text-slate-300 whitespace-pre-line">{trainerAfter}</p>
+                    </div>
+                )}
+                {/* バッジGET演出 */}
+                {badgeInfo && result === 'win' && (
+                    <div className="my-6 p-5 bg-gradient-to-b from-yellow-900/50 to-amber-900/30 rounded-2xl border-2 border-yellow-500 badge-shine">
+                        {badgeInfo.image && (
+                            <img src={badgeInfo.image} alt={badgeInfo.leaderName}
+                                className="w-20 h-20 object-contain mx-auto mb-3"
+                                style={{ imageRendering: 'pixelated', filter: 'drop-shadow(0 0 8px rgba(255,200,50,0.4))' }} />
+                        )}
+                        <p className="text-lg text-slate-300 mb-2">{badgeInfo.leaderName}</p>
+                        {badgeInfo.afterDialogue && (
+                            <p className="text-sm text-slate-400 mb-3 whitespace-pre-line">「{badgeInfo.afterDialogue}」</p>
+                        )}
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <span className="text-3xl">🏅</span>
+                            <span className="text-2xl font-black text-yellow-400" style={{ textShadow: '0 0 15px rgba(251,191,36,0.6)' }}>
+                                {badgeInfo.badgeName} GET！
+                            </span>
+                        </div>
+                        {badgeInfo.reward > 0 && (
+                            <p className="text-sm text-green-400">💰 {badgeInfo.reward}えん もらった！</p>
+                        )}
                     </div>
                 )}
                 <button onClick={onContinue}
@@ -1922,13 +1951,35 @@
 
                 await reloadData(playerId);
 
+                // ジム勝利時はバッジ情報を結果に含める
+                let badgeInfo = null;
+                if (battleType === 'gym' && gymId) {
+                    const gym = GymLeaders[gymId];
+                    if (gym) {
+                        badgeInfo = {
+                            badgeName: gym.badgeName,
+                            leaderName: gym.leader.name,
+                            afterDialogue: gym.dialogue?.after,
+                            reward: gym.reward,
+                            image: gym.image
+                        };
+                    }
+                }
+                // トレーナー勝利時のafter台詞
+                let trainerAfter = null;
+                if (battleType === 'trainer' && battleTrainerId) {
+                    trainerAfter = Trainers[battleTrainerId]?.dialogue?.after;
+                }
+
                 setBattleResult({
                     result: 'win',
                     expGained,
                     leveledUp: updated.leveledUp,
                     pokemon: { ...lead, level: updated.level },
                     evolvedTo: evolvedTo ? POKEMON_DATA[evolvedTo]?.name : null,
-                    evolvedToId: evolvedTo
+                    evolvedToId: evolvedTo,
+                    badgeInfo,
+                    trainerAfter
                 });
                 setScreen('battle_result');
             };
