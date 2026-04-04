@@ -1,0 +1,195 @@
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+
+.font-pixel {
+    font-family: 'DotGothic16', sans-serif;
+}
+
+canvas {
+    image-rendering: pixelated;
+}
+
+.log-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 10px;
+}
+
+body {
+    background-color: #0f172a;
+    overflow-x: hidden;
+}
+
+.pixel-border {
+    box-shadow: 0 4px 0 0 #1e293b;
+}
+
+/* BGM用iframeを隠す */
+.bgm-player {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 2P対面モード用：フルスクリーン */
+.battle-2p-fullscreen {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    z-index: 9999;
+    border-radius: 0 !important;
+}
+
+/* ===== Adventure Game Styles ===== */
+
+/* ワールドマップ */
+.world-map-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+}
+
+/* 町画面メニュー */
+.town-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+/* ルート画面（草むら/洞窟） */
+.route-screen {
+    position: relative;
+    min-height: 300px;
+}
+
+.grass-animation {
+    animation: grassSway 2s ease-in-out infinite;
+}
+
+@keyframes grassSway {
+    0%, 100% { transform: skewX(0deg); }
+    25% { transform: skewX(3deg); }
+    75% { transform: skewX(-3deg); }
+}
+
+/* RPG風ダイアログボックス */
+.dialog-box {
+    border: 4px solid #475569;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.95);
+    padding: 1rem 1.25rem;
+    position: relative;
+}
+
+.dialog-box::after {
+    content: '▼';
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    color: #fbbf24;
+    animation: dialogBlink 1s ease-in-out infinite;
+}
+
+@keyframes dialogBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* タイプ別カラー */
+.type-electric { background-color: #f59e0b; }
+.type-water { background-color: #3b82f6; }
+.type-fire { background-color: #ef4444; }
+.type-grass { background-color: #22c55e; }
+.type-ground { background-color: #92400e; }
+.type-dragon { background-color: #7c3aed; }
+.type-psychic { background-color: #ec4899; }
+.type-ghost { background-color: #6b21a8; }
+.type-fighting { background-color: #b91c1c; }
+.type-steel { background-color: #9ca3af; }
+.type-bug { background-color: #84cc16; }
+.type-normal { background-color: #a8a29e; }
+.type-flying { background-color: #93c5fd; }
+.type-poison { background-color: #a855f7; }
+
+/* ポケモンパーティカード */
+.pokemon-card {
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.pokemon-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.pokemon-card.selected {
+    border-color: #fbbf24 !important;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+}
+
+/* エンカウントアニメーション */
+.encounter-flash {
+    animation: encounterFlash 0.5s ease-in-out;
+}
+
+@keyframes encounterFlash {
+    0% { opacity: 0; }
+    30% { opacity: 1; background: white; }
+    60% { opacity: 0.5; background: black; }
+    100% { opacity: 1; background: transparent; }
+}
+
+/* レベルアップアニメーション */
+.levelup-glow {
+    animation: levelupGlow 1.5s ease-in-out;
+}
+
+@keyframes levelupGlow {
+    0% { box-shadow: none; }
+    50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
+    100% { box-shadow: none; }
+}
+
+/* バッジアニメーション */
+.badge-shine {
+    animation: badgeShine 2s ease-in-out infinite;
+}
+
+@keyframes badgeShine {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.5); }
+}
+
+/* スクロール可能エリア */
+.scrollable {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #475569 transparent;
+}
+
+.scrollable::-webkit-scrollbar {
+    width: 4px;
+}
+
+.scrollable::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 10px;
+}
+
+/* トレーナー登場アニメーション */
+.animate-fadeIn {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

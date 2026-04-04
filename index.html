@@ -129,9 +129,11 @@
             const [evolutionComplete, setEvolutionComplete] = useState(null); // 進化完了後の表示用
             const [megaScizorFrontImageUrl, setMegaScizorFrontImageUrl] = useState(null); // メガハッサム表画像のURL（背景透過処理済み）
             const [searchKeyword, setSearchKeyword] = useState(''); // ポケモン検索キーワード
+            const [moveModal, setMoveModal] = useState(null); // 2P技演出モーダル { side, pokemonKey, moveName, moveType, progress }
 
             const canvasRef = useRef(null);
             const imagesRef = useRef({ p1: new Image(), p2: new Image() });
+            const p2BackImageRef = useRef(null); // 2P用: P2の背面画像（左右反転して描画）
             const basagiriImageRef = useRef(null);
             const zapdosBackImageRef = useRef(null); // サンダー背後画像用（プレイヤー用、背景透過処理済み）
             const zapdosFrontImageRef = useRef(null); // サンダー表画像用（CPU用、背景透過処理済み）
@@ -251,6 +253,20 @@
                 loadMegaRayquazaFrontImage(megaRayquazaFrontImageRef);
                 loadMegaLucarioFrontImage(megaLucarioFrontImageRef);
             }, []);
+
+            // 2P用: P2の背面画像を読み込み（2Pモードでバトル開始時）
+            useEffect(() => {
+                if (gameMode === '2p' && gameState === 'battle' && p2) {
+                    if (isMegaPokemon(p2.key) || p2.key === 'zapdos' || p2.key === 'scyther_alt') return;
+                    const backUrl = p2.key === 'black_rayquaza'
+                        ? 'https://img.pokemondb.net/sprites/black-white/back-shiny/rayquaza.png'
+                        : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${p2.id}.png`;
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => { p2BackImageRef.current = img; };
+                    img.src = backUrl;
+                }
+            }, [gameMode, gameState, p2?.key]);
 
             // バサギリの画像を読み込む（背景透過処理付き）
             useEffect(() => {
@@ -486,7 +502,36 @@
                 }
 
                 addLog(`${attacker.name}の ${move.name}！`);
-                await new Promise(r => setTimeout(r, 400));
+
+                // 2Pモード: 技モーダル演出（90度回転で表示）
+                if (gameMode === '2p') {
+                    const modalSide = isP1 ? 'player' : 'cpu';
+                    const pokemonId = isP1 ? p1.id : p2.id;
+                    const pokemonKey = isP1 ? p1.key : p2.key;
+                    const imgUrl = pokemonKey === 'black_rayquaza'
+                        ? 'https://img.pokemondb.net/sprites/black-white/shiny/rayquaza.png'
+                        : (getMegaPokemonImageUrl ? getMegaPokemonImageUrl(pokemonKey, megaScizorFrontImageUrl) : null)
+                          || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
+
+                    setMoveModal({ side: modalSide, pokemonKey, moveName: move.name, moveType: move.type, imgUrl, progress: 0 });
+
+                    // モーダルアニメーション（登場 0.8秒 → 維持 0.8秒 → フェードアウト 0.4秒）
+                    // 登場
+                    for (let p = 0; p <= 1; p += 0.03) {
+                        setMoveModal(prev => prev ? { ...prev, progress: p } : null);
+                        await new Promise(r => setTimeout(r, 25));
+                    }
+                    // 維持（技名をしっかり見せる）
+                    await new Promise(r => setTimeout(r, 800));
+                    // フェードアウト
+                    for (let p = 1; p >= 0; p -= 0.05) {
+                        setMoveModal(prev => prev ? { ...prev, progress: p, fadeOut: true } : null);
+                        await new Promise(r => setTimeout(r, 25));
+                    }
+                    setMoveModal(null);
+                } else {
+                    await new Promise(r => setTimeout(r, 400));
+                }
 
                 const hit = Math.random() * 100 <= move.acc;
 
@@ -1424,16 +1469,29 @@
             }, [turn, busy, over, gameState, gameMode]);
 
             // --- Canvas Drawing ---
-            const drawPokeball = (ctx, x, y, size, rotation, status) => {
+            // ボール種類別カラー
+            const BALL_COLORS = {
+                pokeball:    { top: '#fff',    bottom: '#ef4444', accent: null },
+                great_ball:  { top: '#fff',    bottom: '#3b82f6', accent: '#ef4444' },
+                ultra_ball:  { top: '#fff',    bottom: '#1a1a1a', accent: '#fbbf24' },
+                master_ball: { top: '#fff',    bottom: '#7c3aed', accent: '#ec4899' },
+            };
+
+            const drawPokeball = (ctx, x, y, size, rotation, status, ballType) => {
+                const colors = BALL_COLORS[ballType] || BALL_COLORS.pokeball;
                 ctx.save();
                 ctx.translate(x, y);
                 ctx.rotate(rotation);
                 ctx.fillStyle = 'rgba(0,0,0,0.2)';
                 ctx.beginPath(); ctx.ellipse(0, size / 2, size / 1.5, size / 4, 0, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = colors.top;
                 ctx.beginPath(); ctx.arc(0, 0, size / 2, 0, Math.PI, false); ctx.fill();
-                ctx.fillStyle = '#ef4444';
+                ctx.fillStyle = colors.bottom;
                 ctx.beginPath(); ctx.arc(0, 0, size / 2, Math.PI, Math.PI * 2, false); ctx.fill();
+                if (colors.accent) {
+                    ctx.strokeStyle = colors.accent; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(0, 0, size / 2 - 2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+                }
                 ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.arc(0, 0, size / 2, 0, Math.PI * 2); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(-size / 2, 0); ctx.lineTo(size / 2, 0); ctx.stroke();
@@ -1496,28 +1554,65 @@
                         }
                     }
 
-                    // CPUポケモンの画像URLを設定（メガポケモン、サンダーの場合は特別な処理）
-                    if (isMegaPokemon(p2.key)) {
-                        // メガポケモンは専用画像を使用するため、URL設定をスキップ
-                    } else if (p2.key === 'zapdos') {
-                        // サンダーは背景透過処理済みの画像を使用するため、URL設定をスキップ
+                    // CPUポケモンの画像URLを設定
+                    const is2P = gameMode === '2p';
+                    if (is2P) {
+                        // 2Pモード: 背面画像はuseEffectで読み込み済み（p2BackImageRef）
+                        // フロント画像もフォールバック用にロード
+                        if (!isMegaPokemon(p2.key) && p2.key !== 'zapdos') {
+                            imagesRef.current.p2.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p2.id}.png`;
+                        }
                     } else {
-                        imagesRef.current.p2.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p2.id}.png`;
+                        if (isMegaPokemon(p2.key)) {
+                            // メガポケモンは専用画像
+                        } else if (p2.key === 'zapdos') {
+                            // サンダーは背景透過処理済み
+                        } else {
+                            imagesRef.current.p2.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p2.id}.png`;
+                        }
                     }
 
-                    // CPUポケモンの描画（メガポケモン、サンダーの場合は特別な描画）
+                    // P2ポケモンの描画
                     if (isP2Visible) {
-                        const megaImageRefs = { megaScizorFrontImageRef };
-                        if (p2.key === 'zapdos' && zapdosFrontImageRef.current) {
+                        const p2X = w * 0.65;
+                        const p2Y = h * 0.05;
+                        const p2Size = 160;
+
+                        if (is2P) {
+                            // 2Pモード: フロントスプライトをそのまま描画（P1のポケモンを見てる向き）
+                            // P2は反対側から画面を見るので、フロントスプライトがP2視点で背中に見える
+                            ctx.save();
+                            if (p2Action === 'hit') {
+                                ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
+                                ctx.translate((Math.random() - 0.5) * 10, 0);
+                            }
+                            // メガポケモンかチェック
+                            if (!drawMegaPokemonCPU(ctx, p2.key, p2Action, w, h, {
+                                megaScizorFrontImageRef,
+                                megaCharizardFrontImageRef,
+                                megaRayquazaFrontImageRef,
+                                megaLucarioFrontImageRef
+                            })) {
+                                if (p2.key === 'zapdos' && zapdosFrontImageRef.current) {
+                                    const src = zapdosFrontImageRef.current;
+                                    if (src instanceof HTMLCanvasElement || (src.complete && src.naturalWidth > 0)) {
+                                        ctx.drawImage(src, p2X, p2Y, p2Size, p2Size);
+                                    }
+                                } else {
+                                    drawPoke(imagesRef.current.p2, p2X, p2Y, p2Size, p2Action);
+                                }
+                            }
+                            ctx.restore();
+                        } else if (p2.key === 'zapdos' && zapdosFrontImageRef.current) {
                             ctx.save();
                             if (p2Action === 'hit') {
                                 ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
                                 ctx.translate((Math.random() - 0.5) * 10, 0);
                             }
                             if (zapdosFrontImageRef.current instanceof HTMLCanvasElement) {
-                                ctx.drawImage(zapdosFrontImageRef.current, w * 0.65, h * 0.05, 160, 160);
+                                ctx.drawImage(zapdosFrontImageRef.current, p2X, p2Y, p2Size, p2Size);
                             } else if (zapdosFrontImageRef.current.complete && zapdosFrontImageRef.current.naturalWidth > 0) {
-                                ctx.drawImage(zapdosFrontImageRef.current, w * 0.65, h * 0.05, 160, 160);
+                                ctx.drawImage(zapdosFrontImageRef.current, p2X, p2Y, p2Size, p2Size);
                             }
                             ctx.restore();
                         } else if (!drawMegaPokemonCPU(ctx, p2.key, p2Action, w, h, {
@@ -1526,7 +1621,7 @@
                             megaRayquazaFrontImageRef,
                             megaLucarioFrontImageRef
                         })) {
-                            drawPoke(imagesRef.current.p2, w * 0.65, h * 0.05, 160, p2Action);
+                            drawPoke(imagesRef.current.p2, p2X, p2Y, p2Size, p2Action);
                         }
                     }
                     // すべてのプレイヤーポケモンを左上に配置（レックウザと同じ位置）
@@ -1794,7 +1889,9 @@
                         ctx.fillText(hpText, x + 15, y + 65);
                         ctx.restore();
                     };
-                    drawStatus(30, 40, p2); drawStatus(w - 250, h - 110, p1);
+                    // HP表示: 左上にP2、右下にP1（1P/2P共通）
+                    drawStatus(30, 40, p2);
+                    drawStatus(w - 250, h - 110, p1);
 
                     ctx.restore();
                     animationId = requestAnimationFrame(render);
@@ -1826,6 +1923,13 @@
                                 2P たいせん
                                 <div className="text-xs text-red-200 mt-1">ふたりで あそぶ</div>
                             </button>
+                            <a
+                                href="adventure.html"
+                                className="bg-green-600 hover:bg-green-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all border-4 border-green-400 hover:border-yellow-400 shadow-lg active:translate-y-1 text-center block"
+                            >
+                                ぼうけんモード
+                                <div className="text-xs text-green-200 mt-1">まちを めぐって チャンピオンを めざす</div>
+                            </a>
                         </div>
                     </div>
                 );
@@ -2171,6 +2275,82 @@
                                 </div>
                             </div>
                             <GameOverOverlay />
+
+                            {/* === 技モーダル演出（90度回転） === */}
+                            {moveModal && (() => {
+                                const isPlayerSide = moveModal.side === 'player';
+                                const rotation = isPlayerSide ? 'rotate(-90deg)' : 'rotate(90deg)';
+                                const progress = moveModal.progress || 0;
+                                const scale = 0.5 + progress * 0.5;
+                                const opacity = progress < 0.1 ? progress * 10 : progress > 0.8 ? (1 - progress) * 5 : 1;
+
+                                // タイプ別カラー
+                                const typeColors = {
+                                    electric: '#facc15', water: '#3b82f6', fire: '#ef4444', dragon: '#7c3aed',
+                                    fighting: '#dc2626', ghost: '#6b21a8', psychic: '#ec4899', steel: '#9ca3af',
+                                    ground: '#92400e', bug: '#84cc16', normal: '#a8a29e', grass: '#22c55e',
+                                    flying: '#93c5fd', poison: '#a855f7'
+                                };
+                                const glowColor = typeColors[moveModal.moveType] || '#ffffff';
+
+                                return (
+                                    <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none"
+                                        style={{ opacity }}>
+                                        {/* 背景フラッシュ */}
+                                        <div className="absolute inset-0" style={{
+                                            background: `radial-gradient(ellipse at center, ${glowColor}40 0%, transparent 70%)`,
+                                            opacity: progress
+                                        }}></div>
+
+                                        {/* 90度回転モーダル */}
+                                        <div className="flex flex-col items-center" style={{
+                                            transform: `${rotation} scale(${scale})`,
+                                            transition: 'transform 0.1s ease-out'
+                                        }}>
+                                            {/* ポケモン画像 */}
+                                            <img src={moveModal.imgUrl}
+                                                className="w-[140px] h-[140px] object-contain"
+                                                style={{
+                                                    filter: `drop-shadow(0 0 ${20 + progress * 30}px ${glowColor}) brightness(${1 + progress * 0.5})`,
+                                                    transform: isPlayerSide ? 'scaleX(1)' : 'scaleX(-1)'
+                                                }} />
+
+                                            {/* 技名 */}
+                                            <div className="font-pixel font-black text-white text-2xl mt-2 tracking-wider"
+                                                style={{
+                                                    textShadow: `0 0 20px ${glowColor}, 0 0 40px ${glowColor}`,
+                                                    opacity: Math.min(1, progress * 3)
+                                                }}>
+                                                {moveModal.moveName}
+                                            </div>
+
+                                            {/* エフェクトライン（技が相手に向かうイメージ） */}
+                                            <div className="mt-3 flex gap-1">
+                                                {[0, 1, 2, 3, 4].map(i => (
+                                                    <div key={i} style={{
+                                                        width: `${8 + i * 6}px`,
+                                                        height: '4px',
+                                                        backgroundColor: glowColor,
+                                                        opacity: Math.max(0, progress - i * 0.15),
+                                                        borderRadius: '2px',
+                                                        boxShadow: `0 0 8px ${glowColor}`
+                                                    }}></div>
+                                                ))}
+                                                <div style={{
+                                                    width: '0',
+                                                    height: '0',
+                                                    borderTop: '8px solid transparent',
+                                                    borderBottom: '8px solid transparent',
+                                                    borderLeft: `12px solid ${glowColor}`,
+                                                    filter: `drop-shadow(0 0 6px ${glowColor})`,
+                                                    opacity: progress > 0.3 ? 1 : 0,
+                                                    marginTop: '-6px'
+                                                }}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         {/* === 1P側（下端・通常向き） === */}

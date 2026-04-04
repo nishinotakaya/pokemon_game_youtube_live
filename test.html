@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon Adventure - Tests</title>
+    <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css">
+    <style>
+        body { background: #1e293b; color: #e2e8f0; }
+        #mocha { margin: 20px; }
+        #mocha h1, #mocha h2 { color: #fbbf24; }
+        #mocha .test.pass .duration { color: #22c55e; }
+        #mocha .test.fail { color: #ef4444; }
+        #mocha .suite { border-color: #475569; }
+        .summary { padding: 20px; margin: 20px; background: #0f172a; border-radius: 12px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="summary">
+        <h2 style="color: #fbbf24; margin-top: 0;">Pokemon Adventure Test Suite</h2>
+        <p>テスト対象: BattleEngine, Leveling, Catching, Encounter</p>
+    </div>
+    <div id="mocha"></div>
+
+    <!-- Test Framework -->
+    <script src="https://unpkg.com/chai/chai.js"></script>
+    <script src="https://unpkg.com/mocha/mocha.js"></script>
+
+    <!-- Game Data (required by engine) -->
+    <script src="data/pokemon.js"></script>
+    <script src="data/moves.js"></script>
+    <script src="data/mega_pokemon.js"></script>
+    <script src="data/towns.js"></script>
+    <script src="data/items.js"></script>
+    <script src="data/trainers.js"></script>
+
+    <!-- Engine Modules Under Test -->
+    <script src="engine/battle-engine.js"></script>
+    <script src="engine/leveling.js"></script>
+    <script src="engine/encounter.js"></script>
+    <script src="engine/catching.js"></script>
+    <script src="engine/state-machine.js"></script>
+
+    <script>
+        mocha.setup('bdd');
+        mocha.timeout(5000);
+    </script>
+
+    <!-- Test Files -->
+    <script src="tests/battle-engine.test.js"></script>
+    <script src="tests/leveling.test.js"></script>
+    <script src="tests/catching.test.js"></script>
+    <script src="tests/encounter.test.js"></script>
+
+    <script>
+        mocha.run();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1818 @@
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポケモンアドベンチャー</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel standalone -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Dexie (IndexedDB) -->
+    <script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- データファイル -->
+    <script src="data/pokemon.js"></script>
+    <script src="data/moves.js"></script>
+    <script src="data/mega_pokemon.js"></script>
+    <script src="data/towns.js"></script>
+    <script src="data/items.js"></script>
+    <script src="data/trainers.js"></script>
+    <script src="data/maps.js"></script>
+    <!-- マップレンダラー -->
+    <script src="components/map-renderer.js"></script>
+    <!-- エフェクト -->
+    <script src="effects/electric.js"></script>
+    <script src="effects/water.js"></script>
+    <script src="effects/fire.js"></script>
+    <script src="effects/grass.js"></script>
+    <script src="effects/ground.js"></script>
+    <script src="effects/normal.js"></script>
+    <script src="effects/ghost.js"></script>
+    <script src="effects/effects-full.js"></script>
+    <script src="effects/effects.js"></script>
+    <!-- DB -->
+    <script src="db/database.js"></script>
+    <script src="db/repository.js"></script>
+    <!-- Engine -->
+    <script src="engine/battle-engine.js"></script>
+    <script src="engine/state-machine.js"></script>
+    <script src="engine/leveling.js"></script>
+    <script src="engine/encounter.js"></script>
+    <script src="engine/catching.js"></script>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-2 md:p-4">
+    <div id="root" class="w-full max-w-2xl"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+        const Repo = window.Game.Repository;
+        const Leveling = window.Game.Leveling;
+        const Encounter = window.Game.Encounter;
+        const Catching = window.Game.Catching;
+        const TrainerSprites = window.Game.Data.TrainerSprites;
+        const LeaderSprites = window.Game.Data.LeaderSprites;
+        const BattleEngine = window.Game.BattleEngine;
+        const Towns = window.Game.Data.Towns;
+        const Routes = window.Game.Data.Routes;
+        const Items = window.Game.Data.Items;
+        const GymLeaders = window.Game.Data.GymLeaders;
+        const Trainers = window.Game.Data.Trainers;
+        const EliteFour = window.Game.Data.EliteFour;
+        const Champion = window.Game.Data.Champion;
+        const NPCs = window.Game.Data.NPCs;
+        const ShopInventory = window.Game.Data.ShopInventory;
+
+        // タイプを日本語に変換
+        const TYPE_NAME_JP = {
+            electric: 'でんき', water: 'みず', fire: 'ほのお', bug: 'むし',
+            flying: 'ひこう', steel: 'はがね', dragon: 'ドラゴン',
+            fighting: 'かくとう', ghost: 'ゴースト', psychic: 'エスパー',
+            poison: 'どく', normal: 'ノーマル', ground: 'じめん', grass: 'くさ'
+        };
+
+        // ポケモン画像URL取得
+        const getPokemonImageUrl = (masterId) => {
+            const data = POKEMON_DATA[masterId];
+            if (!data) return '';
+            if (masterId === 'black_rayquaza') return 'https://img.pokemondb.net/sprites/black-white/shiny/rayquaza.png';
+            const megaUrl = typeof getMegaPokemonImageUrl === 'function' ? getMegaPokemonImageUrl(masterId, null) : null;
+            if (megaUrl) return megaUrl;
+            return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`;
+        };
+
+        // ===== ダイアログボックス =====
+        const DialogBox = ({ text, onComplete, autoAdvance }) => {
+            const [displayedText, setDisplayedText] = useState('');
+            const [charIndex, setCharIndex] = useState(0);
+            const [isComplete, setIsComplete] = useState(false);
+
+            useEffect(() => {
+                setDisplayedText('');
+                setCharIndex(0);
+                setIsComplete(false);
+            }, [text]);
+
+            useEffect(() => {
+                if (charIndex < text.length) {
+                    const timer = setTimeout(() => {
+                        setDisplayedText(prev => prev + text[charIndex]);
+                        setCharIndex(prev => prev + 1);
+                    }, 40);
+                    return () => clearTimeout(timer);
+                } else {
+                    setIsComplete(true);
+                    if (autoAdvance && onComplete) {
+                        const timer = setTimeout(onComplete, 1500);
+                        return () => clearTimeout(timer);
+                    }
+                }
+            }, [charIndex, text]);
+
+            return (
+                <div className="dialog-box text-white font-pixel text-lg cursor-pointer"
+                     onClick={() => isComplete && onComplete?.()}>
+                    {displayedText}
+                    {isComplete && !autoAdvance && <span className="ml-2 animate-pulse text-yellow-400">▼</span>}
+                </div>
+            );
+        };
+
+        // ===== タイトル画面 =====
+        const TitleScreen = ({ onNewGame, onContinue, hasSaveData }) => (
+            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-8 flex flex-col items-center gap-6">
+                <h1 className="text-3xl md:text-4xl text-center text-yellow-400 drop-shadow-md">ポケモンアドベンチャー</h1>
+                <p className="text-slate-400 text-sm text-center">まちを めぐり ポケモンを つかまえて<br/>チャンピオンを めざそう！</p>
+                <div className="flex flex-col gap-4 w-full max-w-xs">
+                    <button onClick={onNewGame}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all border-4 border-blue-400 hover:border-yellow-400 shadow-lg active:translate-y-1">
+                        はじめから
+                        <div className="text-xs text-blue-200 mt-1">���たらしい ぼうけん</div>
+                    </button>
+                    {hasSaveData && (
+                        <button onClick={onContinue}
+                            className="bg-green-600 hover:bg-green-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all border-4 border-green-400 hover:border-yellow-400 shadow-lg active:translate-y-1">
+                            つづきから
+                            <div className="text-xs text-green-200 mt-1">セーブデータを よみこむ</div>
+                        </button>
+                    )}
+                    <a href="index.html"
+                        className="bg-slate-600 hover:bg-slate-500 text-white px-8 py-3 rounded-2xl font-bold text-center transition-all border-4 border-slate-500 hover:border-yellow-400">
+                        クラシックバトル
+                        <div className="text-xs text-slate-300 mt-1">���トルだけ たのしむ</div>
+                    </a>
+                </div>
+            </div>
+        );
+
+        // ===== 御三家選択画面 =====
+        const StarterSelect = ({ onSelect }) => {
+            const starters = NPCs.professor_oak.starterPokemon;
+            return (
+                <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6">
+                    <h2 className="text-2xl text-center text-yellow-400 mb-2">ポケモンを えらぼう！</h2>
+                    {NPCs.professor_oak.image && (
+                        <div className="flex justify-center mb-3">
+                            <img src={NPCs.professor_oak.image} alt="オーキドはかせ"
+                                className="w-36 h-36 object-contain"
+                                style={{ imageRendering: 'pixelated', filter: 'drop-shadow(0 0 8px rgba(255,200,50,0.3))' }} />
+                        </div>
+                    )}
+                    <p className="text-slate-400 text-sm text-center mb-6">オーキドはかせから 1びきの ポケモンを もらえるぞ</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {starters.map(key => {
+                            const data = POKEMON_DATA[key];
+                            return (
+                                <button key={key} onClick={() => onSelect(key)}
+                                    className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all flex flex-col items-center">
+                                    <img src={getPokemonImageUrl(key)} className="w-24 h-24" />
+                                    <span className="text-lg mt-2">{data.name}</span>
+                                    <span className="text-xs text-slate-400">{TYPE_NAME_JP[data.type]}タイプ</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        // ===== ワールドマップ =====
+        const WorldMap = ({ progress, badges, onSelectTown, onOpenParty, onOpenBag }) => {
+            const allBadgeIds = Object.values(GymLeaders).map(g => g.badge);
+            const hasAllBadges = allBadgeIds.every(b => badges.includes(b));
+
+            return (
+                <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-4 md:p-6 max-h-[90vh] overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center mb-3 flex-shrink-0">
+                        <h2 className="text-2xl text-yellow-400">ワールドマップ</h2>
+                        <div className="flex gap-2">
+                            <button onClick={onOpenParty} className="bg-blue-700 hover:bg-blue-600 px-3 py-1 rounded-lg text-sm border border-blue-500">てもち</button>
+                            <button onClick={onOpenBag} className="bg-green-700 hover:bg-green-600 px-3 py-1 rounded-lg text-sm border border-green-500">バッグ</button>
+                        </div>
+                    </div>
+                    {/* 進行ガイド */}
+                    <div className="bg-slate-900 rounded-xl p-3 mb-3 flex-shrink-0 border border-slate-700">
+                        <div className="text-xs text-yellow-400 mb-1">💡 ジムリーダーに かって バッジを あつめよう！</div>
+                        <div className="text-xs text-slate-400">バッジが ないと つぎの まちに すすめません</div>
+                    </div>
+                    {/* バッジ一覧 */}
+                    <div className="flex items-center gap-1.5 mb-3 flex-shrink-0 flex-wrap">
+                        {Object.values(GymLeaders).map(gym => (
+                            <div key={gym.badge}
+                                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs ${badges.includes(gym.badge) ? 'bg-yellow-900/50 border border-yellow-600' : 'bg-slate-900 border border-slate-700 opacity-40'}`}>
+                                <span>🏅</span>
+                                <span>{gym.badgeName}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="world-map-grid overflow-y-auto flex-1 scrollable">
+                        {Object.entries(Towns).map(([townId, town]) => {
+                            let isUnlocked = true;
+                            if (town.unlockedBy === 'all_badges') {
+                                isUnlocked = hasAllBadges;
+                            } else if (town.unlockedBy) {
+                                isUnlocked = badges.includes(town.unlockedBy);
+                            }
+                            const gym = town.hasGym ? GymLeaders[town.gymId] : null;
+                            const gymCleared = gym ? badges.includes(gym.badge) : false;
+                            return (
+                                <button key={townId}
+                                    onClick={() => isUnlocked && onSelectTown(townId)}
+                                    disabled={!isUnlocked}
+                                    className={`p-3 rounded-2xl border-4 transition-all text-left ${isUnlocked
+                                        ? 'bg-slate-700 hover:bg-slate-600 border-slate-500 hover:border-yellow-400 cursor-pointer'
+                                        : 'bg-slate-900 border-slate-800 opacity-40 cursor-not-allowed'}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-xl">{town.icon}</span>
+                                        <span className="font-bold text-sm">{town.name}</span>
+                                    </div>
+                                    <div className="text-xs text-slate-400">{town.description}</div>
+                                    {gym && (
+                                        <div className={`mt-2 p-1.5 rounded-lg text-xs ${gymCleared ? 'bg-green-900/40 border border-green-700' : 'bg-red-900/40 border border-red-700'}`}>
+                                            <div className="flex items-center gap-1">
+                                                <span>{gymCleared ? '✅' : '⭐'}</span>
+                                                <span className="font-bold">{gym.leader.name}</span>
+                                            </div>
+                                            <div className="text-slate-400 mt-0.5">{gym.leader.title}</div>
+                                            {gymCleared && <div className="text-green-400">クリア済</div>}
+                                            {!gymCleared && isUnlocked && <div className="text-yellow-400">ちょうせん できます！</div>}
+                                        </div>
+                                    )}
+                                    {!isUnlocked && (
+                                        <div className="text-xs text-red-400 mt-2 flex items-center gap-1">
+                                            <span>🔒</span>
+                                            <span>まえの ジムリーダーに かとう！</span>
+                                        </div>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        // ===== RPGマップ画面（町・ルート統合） =====
+        const RPGMapScreen = ({ mapId, playerPos, setPlayerPos, progress, badges, onEncounter, onTrainerBattle, onGym, onShop, onPokecenter, onMapChange, onInteraction, onOpenParty, interactionMessage }) => {
+            const canvasRef = useRef(null);
+            const mapData = window.Game.Data.Maps[mapId];
+            const MR = window.Game.MapRenderer;
+            const [playerDir, setPlayerDir] = useState(0); // 0=down,1=left,2=right,3=up
+            const [animFrame, setAnimFrame] = useState(0);
+            const [isMoving, setIsMoving] = useState(false);
+            const [dialogText, setDialogText] = useState(null);
+            const [encounterFlash, setEncounterFlash] = useState(false);
+            const moveQueue = useRef([]);
+            const defeatedTrainers = progress?.defeatedTrainers || [];
+
+            // タイルが歩けるか判定
+            const canWalk = (x, y) => {
+                if (!mapData) return false;
+                if (x < 0 || x >= mapData.width || y < 0 || y >= mapData.height) return false;
+                const tile = mapData.tiles[y * mapData.width + x];
+                if (!window.Game.WALKABLE_TILES.includes(tile)) return false;
+                // NPC・未撃破トレーナーの位置は歩けない
+                if (mapData.interactions) {
+                    const npcHere = mapData.interactions.find(i => i.x === x && i.y === y && (
+                        (i.type === 'npc') ||
+                        (i.type === 'trainer' && !defeatedTrainers.includes(i.action))
+                    ));
+                    if (npcHere) return false;
+                }
+                return true;
+            };
+
+            // 移動処理
+            const tryMove = useCallback((dx, dy, dir) => {
+                if (isMoving || dialogText) return;
+                setPlayerDir(dir);
+                const newX = playerPos.x + dx;
+                const newY = playerPos.y + dy;
+
+                // 出口チェック
+                const exit = mapData?.exits?.find(e => e.x === newX && e.y === newY);
+                if (exit) {
+                    onMapChange(exit.to, { x: exit.entryX, y: exit.entryY });
+                    return;
+                }
+
+                if (!canWalk(newX, newY)) return;
+
+                setIsMoving(true);
+                setAnimFrame(prev => prev + 1);
+                setPlayerPos({ x: newX, y: newY });
+
+                // ドアに入った時の自動インタラクション
+                const tile = mapData.tiles[newY * mapData.width + newX];
+                if (tile === 6 && mapData.interactions) {
+                    const doorInter = mapData.interactions.find(i => i.x === newX && i.y === newY);
+                    if (doorInter) {
+                        setTimeout(() => handleInteraction(doorInter), 200);
+                    }
+                }
+
+                // 草むらエンカウントチェック
+                if (tile === 1 && mapData.encounters) {
+                    const routeData = Routes[mapData.encounters];
+                    if (routeData && Encounter.checkEncounter(routeData.type || 'grass')) {
+                        const wildPokemon = Encounter.generateWildPokemon(routeData.encounters);
+                        if (wildPokemon) {
+                            setEncounterFlash(true);
+                            setTimeout(() => {
+                                setEncounterFlash(false);
+                                onEncounter(wildPokemon);
+                            }, 500);
+                            return;
+                        }
+                    }
+                }
+
+                setTimeout(() => setIsMoving(false), 150);
+            }, [playerPos, isMoving, dialogText, mapData]);
+
+            // インタラクション（Aボタン / タップ）
+            const tryInteract = useCallback(() => {
+                if (dialogText) { setDialogText(null); return; }
+                if (!mapData?.interactions) return;
+
+                // 向いている方向の1マス先をチェック
+                const dirs = [[0, 1], [-1, 0], [1, 0], [0, -1]]; // down,left,right,up
+                const [dx, dy] = dirs[playerDir];
+                const tx = playerPos.x + dx;
+                const ty = playerPos.y + dy;
+
+                const inter = mapData.interactions.find(i => i.x === tx && i.y === ty);
+                if (!inter) {
+                    // 自分の位置もチェック
+                    const selfInter = mapData.interactions.find(i => i.x === playerPos.x && i.y === playerPos.y);
+                    if (selfInter) handleInteraction(selfInter);
+                    return;
+                }
+                handleInteraction(inter);
+            }, [playerPos, playerDir, dialogText, mapData]);
+
+            const handleInteraction = (inter) => {
+                switch (inter.type) {
+                    case 'sign':
+                        setDialogText(inter.message);
+                        break;
+                    case 'npc':
+                        if (inter.action === 'professor_oak') {
+                            onInteraction?.('professor_oak');
+                        } else {
+                            setDialogText(inter.label || 'はなしかけた');
+                        }
+                        break;
+                    case 'trainer':
+                        if (!defeatedTrainers.includes(inter.action)) {
+                            const trainer = Trainers[inter.action];
+                            if (trainer) {
+                                setDialogText(trainer.dialogue?.before || 'しょうぶだ！');
+                                setTimeout(() => {
+                                    setDialogText(null);
+                                    onTrainerBattle(inter.action);
+                                }, 1500);
+                            }
+                        } else {
+                            setDialogText('もう たたかった トレーナーだ');
+                        }
+                        break;
+                    case 'door':
+                        if (inter.action === 'oak_lab') {
+                            onInteraction?.('oak_lab');
+                        } else {
+                            setDialogText(inter.label || 'ドアだ');
+                        }
+                        break;
+                    case 'pokecenter':
+                        onPokecenter?.();
+                        break;
+                    case 'shop':
+                        onShop?.(inter.action);
+                        break;
+                    case 'gym':
+                        onGym?.(inter.action);
+                        break;
+                }
+            };
+
+            // キーボード入力
+            useEffect(() => {
+                const handleKey = (e) => {
+                    switch (e.key) {
+                        case 'ArrowUp': case 'w': case 'W': e.preventDefault(); tryMove(0, -1, 3); break;
+                        case 'ArrowDown': case 's': case 'S': e.preventDefault(); tryMove(0, 1, 0); break;
+                        case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); tryMove(-1, 0, 1); break;
+                        case 'ArrowRight': case 'd': case 'D': e.preventDefault(); tryMove(1, 0, 2); break;
+                        case ' ': case 'Enter': case 'z': case 'Z': e.preventDefault(); tryInteract(); break;
+                        case 'p': case 'P': e.preventDefault(); onOpenParty?.(); break;
+                    }
+                };
+                window.addEventListener('keydown', handleKey);
+                return () => window.removeEventListener('keydown', handleKey);
+            }, [tryMove, tryInteract]);
+
+            // Canvas描画ループ
+            useEffect(() => {
+                if (!mapData || !canvasRef.current) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let frameId;
+
+                const render = () => {
+                    MR.render(ctx, canvas, mapData, playerPos.x, playerPos.y, playerDir, animFrame, mapData.interactions, defeatedTrainers);
+                    frameId = requestAnimationFrame(render);
+                };
+                render();
+                return () => cancelAnimationFrame(frameId);
+            }, [mapData, playerPos, playerDir, animFrame, defeatedTrainers]);
+
+            if (!mapData) return <div className="text-white font-pixel p-8 text-center">マップが みつかりません: {mapId}</div>;
+
+            return (
+                <div className="bg-slate-900 rounded-3xl border-4 border-slate-700 shadow-2xl overflow-hidden font-pixel">
+                    {/* Canvasマップ */}
+                    <div className="relative">
+                        <canvas ref={canvasRef} width={560} height={440}
+                            className="w-full aspect-[14/11] bg-black" style={{ imageRendering: 'pixelated' }} />
+
+                        {/* エンカウントフラッシュ */}
+                        {encounterFlash && (
+                            <div className="absolute inset-0 encounter-flash bg-white z-10"></div>
+                        )}
+
+                        {/* ダイアログ */}
+                        {(dialogText || interactionMessage) && (
+                            <div className="absolute bottom-0 left-0 right-0 p-2 z-20">
+                                <div className="dialog-box text-white text-sm cursor-pointer" onClick={() => setDialogText(null)}>
+                                    {(dialogText || interactionMessage).split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 操作パッド */}
+                    <div className="bg-slate-800 p-3 border-t-2 border-slate-700">
+                        <div className="flex justify-between items-center">
+                            {/* 方向パッド */}
+                            <div className="grid grid-cols-3 gap-1 w-28">
+                                <div></div>
+                                <button onTouchStart={(e)=>{e.preventDefault();tryMove(0,-1,3)}} onClick={()=>tryMove(0,-1,3)} className="bg-slate-700 hover:bg-slate-600 rounded-lg p-2 text-center text-white text-lg active:bg-slate-500">▲</button>
+                                <div></div>
+                                <button onTouchStart={(e)=>{e.preventDefault();tryMove(-1,0,1)}} onClick={()=>tryMove(-1,0,1)} className="bg-slate-700 hover:bg-slate-600 rounded-lg p-2 text-center text-white text-lg active:bg-slate-500">◀</button>
+                                <div className="bg-slate-800 rounded-lg flex items-center justify-center text-slate-500 text-xs">+</div>
+                                <button onTouchStart={(e)=>{e.preventDefault();tryMove(1,0,2)}} onClick={()=>tryMove(1,0,2)} className="bg-slate-700 hover:bg-slate-600 rounded-lg p-2 text-center text-white text-lg active:bg-slate-500">▶</button>
+                                <div></div>
+                                <button onTouchStart={(e)=>{e.preventDefault();tryMove(0,1,0)}} onClick={()=>tryMove(0,1,0)} className="bg-slate-700 hover:bg-slate-600 rounded-lg p-2 text-center text-white text-lg active:bg-slate-500">▼</button>
+                                <div></div>
+                            </div>
+
+                            {/* アクションボタン */}
+                            <div className="flex gap-2">
+                                <button onClick={tryInteract}
+                                    className="bg-green-700 hover:bg-green-600 active:bg-green-500 w-14 h-14 rounded-full text-white font-bold text-lg border-2 border-green-500 shadow-lg">
+                                    A
+                                </button>
+                                <button onClick={() => onOpenParty?.()}
+                                    className="bg-blue-700 hover:bg-blue-600 active:bg-blue-500 w-14 h-14 rounded-full text-white font-bold text-xs border-2 border-blue-500 shadow-lg">
+                                    てもち
+                                </button>
+                            </div>
+                        </div>
+                        <div className="text-xs text-slate-500 text-center mt-2">
+                            ← → ↑ ↓ いどう / スペース はなす / P てもち
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ===== ショップ画面 =====
+        const ShopScreen = ({ townId, playerMoney, playerItems, onBuy, onBack }) => {
+            const inventory = ShopInventory[townId] || ShopInventory.default;
+            return (
+                <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-2xl text-yellow-400">🏪 ショップ</h2>
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm">💰 {playerMoney}えん</span>
+                            <button onClick={onBack} className="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded-xl text-sm border border-slate-500">もどる</button>
+                        </div>
+                    </div>
+                    <div className="space-y-2 max-h-[60vh] overflow-y-auto scrollable">
+                        {inventory.map(itemKey => {
+                            const item = Items[itemKey];
+                            if (!item || item.price <= 0) return null;
+                            const owned = playerItems.find(pi => pi.itemKey === itemKey);
+                            return (
+                                <div key={itemKey} className="bg-slate-700 p-3 rounded-xl flex justify-between items-center">
+                                    <div>
+                                        <div className="font-bold">{item.icon} {item.name}</div>
+                                        <div className="text-xs text-slate-400">{item.description}</div>
+                                        {owned && <div className="text-xs text-green-400">もちもの: {owned.quantity}こ</div>}
+                                    </div>
+                                    <button onClick={() => onBuy(itemKey)}
+                                        disabled={playerMoney < item.price}
+                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                                            playerMoney >= item.price
+                                                ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
+                                                : 'bg-slate-600 text-slate-400 opacity-50'}`}>
+                                        {item.price}えん
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        // ===== ポケモンパーティ画面 =====
+        const PartyScreen = ({ party, allPokemons, onBack, onSwap }) => (
+            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 max-h-[90vh] overflow-hidden flex flex-col">
+                <div className="flex justify-between items-center mb-4 flex-shrink-0">
+                    <h2 className="text-2xl text-yellow-400">てもちポケモン</h2>
+                    <button onClick={onBack} className="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded-xl text-sm border border-slate-500">もどる</button>
+                </div>
+                <div className="space-y-2 overflow-y-auto flex-1 scrollable">
+                    {allPokemons.map(pokemon => {
+                        const isParty = pokemon.isInParty === 1;
+                        const hpPercent = pokemon.maxHp > 0 ? (pokemon.currentHp / pokemon.maxHp) * 100 : 0;
+                        return (
+                            <div key={pokemon.id}
+                                className={`p-3 rounded-xl border-2 flex items-center gap-3 transition-all ${isParty ? 'bg-slate-700 border-blue-500' : 'bg-slate-900 border-slate-700'}`}>
+                                <img src={getPokemonImageUrl(pokemon.masterId)} className="w-16 h-16" />
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold">{pokemon.nickname || pokemon.name}</span>
+                                        <span className="text-xs text-slate-400">Lv.{pokemon.level}</span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded type-${pokemon.type}`}>{TYPE_NAME_JP[pokemon.type]}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className="w-24 h-2 bg-slate-600 rounded-full overflow-hidden">
+                                            <div className={`h-full rounded-full ${hpPercent > 50 ? 'bg-green-500' : hpPercent > 20 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                                 style={{ width: `${hpPercent}%` }}></div>
+                                        </div>
+                                        <span className="text-xs text-slate-400">{pokemon.currentHp}/{pokemon.maxHp}</span>
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-0.5">
+                                        ATK:{pokemon.attack} DEF:{pokemon.defense} SPD:{pokemon.speed}
+                                    </div>
+                                    {/* EXPバー */}
+                                    {(() => {
+                                        const expThis = Leveling.expForLevel(pokemon.level);
+                                        const expNext = Leveling.expForLevel(Math.min(pokemon.level + 1, 100));
+                                        const pct = expNext > expThis ? ((pokemon.exp || 0) - expThis) / (expNext - expThis) * 100 : 100;
+                                        return (
+                                            <div className="flex items-center gap-1 mt-0.5">
+                                                <span className="text-[9px] text-blue-400">EXP</span>
+                                                <div className="w-20 h-1.5 bg-slate-600 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }}></div>
+                                                </div>
+                                                <span className="text-[9px] text-slate-500">{Leveling.expToNextLevel(pokemon.level, pokemon.exp || 0)}</span>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                                <button onClick={() => onSwap(pokemon.id, !isParty)}
+                                    className={`px-3 py-1 rounded-lg text-xs font-bold ${isParty ? 'bg-red-700 hover:bg-red-600' : 'bg-blue-700 hover:bg-blue-600'}`}>
+                                    {isParty ? 'はずす' : 'いれる'}
+                                </button>
+                            </div>
+                        );
+                    })}
+                    {allPokemons.length === 0 && (
+                        <p className="text-center text-slate-400 py-8">ポケモンが いません</p>
+                    )}
+                </div>
+            </div>
+        );
+
+        // ===== バッグ画面 =====
+        const BagScreen = ({ items, onUseItem, onBack }) => (
+            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl text-yellow-400">バッグ</h2>
+                    <button onClick={onBack} className="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded-xl text-sm border border-slate-500">もどる</button>
+                </div>
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto scrollable">
+                    {items.map(pi => {
+                        const item = Items[pi.itemKey];
+                        if (!item) return null;
+                        return (
+                            <div key={pi.id} className="bg-slate-700 p-3 rounded-xl flex justify-between items-center">
+                                <div>
+                                    <span className="font-bold">{item.icon} {item.name}</span>
+                                    <span className="text-sm text-slate-400 ml-2">x{pi.quantity}</span>
+                                    <div className="text-xs text-slate-400">{item.description}</div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {items.length === 0 && <p className="text-center text-slate-400 py-8">アイテムが ありません</p>}
+                </div>
+            </div>
+        );
+
+        // ===== ポケモンセンター =====
+        const PokecenterScreen = ({ onHeal, onBack, healed }) => (
+            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                <h2 className="text-2xl text-yellow-400 mb-4">🏥 ポケモンセンター</h2>
+                <p className="text-slate-300 mb-6">おまちしていました！<br/>ポケモンを おあずかりしますね</p>
+                {healed ? (
+                    <div>
+                        <p className="text-green-400 text-xl mb-4">✨ ポケモンが げんきに なりました！</p>
+                        <button onClick={onBack} className="bg-slate-600 hover:bg-slate-500 px-6 py-3 rounded-xl border border-slate-500">もどる</button>
+                    </div>
+                ) : (
+                    <div className="flex gap-4 justify-center">
+                        <button onClick={onHeal} className="bg-pink-600 hover:bg-pink-500 px-6 py-3 rounded-xl font-bold border-2 border-pink-400 hover:border-yellow-400">かいふくする</button>
+                        <button onClick={onBack} className="bg-slate-600 hover:bg-slate-500 px-6 py-3 rounded-xl border border-slate-500">もどる</button>
+                    </div>
+                )}
+            </div>
+        );
+
+        // ===== バトル画面（簡易版 - ターン制コマンドバトル） =====
+        const BattleScreen = ({ playerPokemon, opponentPokemon, opponentName, isCatchable, playerItems, battleType, onWin, onLose, onFlee, onCatch }) => {
+            const [playerHp, setPlayerHp] = useState(playerPokemon.currentHp);
+            const [opponentHp, setOpponentHp] = useState(opponentPokemon.currentHp || opponentPokemon.maxHp);
+            const [logs, setLogs] = useState([`${opponentName || opponentPokemon.name}が あらわれた！`]);
+            const [turn, setTurn] = useState('player');
+            const [busy, setBusy] = useState(false);
+            const [battleOver, setBattleOver] = useState(false);
+            const [playerBoosts, setPlayerBoosts] = useState({ atkBoost: 1, defBoost: 1, poisoned: false });
+            const [opponentBoosts, setOpponentBoosts] = useState({ atkBoost: 1, defBoost: 1, poisoned: false });
+            const [showBallSelect, setShowBallSelect] = useState(false);
+
+            const pHpPercent = playerPokemon.maxHp > 0 ? (playerHp / playerPokemon.maxHp) * 100 : 0;
+            const oHpPercent = opponentPokemon.maxHp > 0 ? (opponentHp / opponentPokemon.maxHp) * 100 : 0;
+
+            const addLog = (msg) => setLogs(prev => [msg, ...prev].slice(0, 10));
+
+            // Canvas バトル描画
+            const battleCanvasRef = useRef(null);
+            const p1ImgRef = useRef(new Image());
+            const p2ImgRef = useRef(new Image());
+            const [p1Action, setP1Action] = useState('idle');
+            const [p2BAction, setP2BAction] = useState('idle');
+            const [battleShake, setBattleShake] = useState(0);
+            const [activeEffect, setActiveEffect] = useState(null); // 1Pと同じエフェクトシステム
+            const battleParticles = useRef([]);
+            const beamProgressRef = useRef(0);
+            const ballAnimRef = useRef({ active: false, progress: 0, status: 'none', shakeCount: 0, ballType: 'pokeball' });
+
+            // ポケモン画像ロード
+            useEffect(() => {
+                const p1Url = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${POKEMON_DATA[playerPokemon.masterId]?.id || 25}.png`;
+                p1ImgRef.current.src = p1Url;
+                p2ImgRef.current.src = getPokemonImageUrl(opponentPokemon.masterId);
+            }, []);
+
+            // EXP計算
+            const expCurrent = playerPokemon.exp || 0;
+            const expThisLevel = Leveling.expForLevel(playerPokemon.level);
+            const expNextLevel = Leveling.expForLevel(Math.min(playerPokemon.level + 1, 100));
+            const expProgress = expNextLevel > expThisLevel ? (expCurrent - expThisLevel) / (expNextLevel - expThisLevel) : 1;
+
+            // ボール種類別カラー
+            const BALL_COLORS = {
+                pokeball:    { top: '#fff',    bottom: '#ef4444', accent: null },
+                great_ball:  { top: '#fff',    bottom: '#3b82f6', accent: '#ef4444' },
+                ultra_ball:  { top: '#fff',    bottom: '#1a1a1a', accent: '#fbbf24' },
+                master_ball: { top: '#fff',    bottom: '#7c3aed', accent: '#ec4899' },
+            };
+
+            // モンスターボール描画
+            const drawPokeball = (ctx, x, y, size, rotation, status, ballType) => {
+                const colors = BALL_COLORS[ballType] || BALL_COLORS.pokeball;
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rotation);
+                // 影
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath(); ctx.ellipse(0, size / 2, size / 1.5, size / 4, 0, 0, Math.PI * 2); ctx.fill();
+                // 上半分
+                ctx.fillStyle = colors.top;
+                ctx.beginPath(); ctx.arc(0, 0, size / 2, 0, Math.PI, false); ctx.fill();
+                // 下半分
+                ctx.fillStyle = colors.bottom;
+                ctx.beginPath(); ctx.arc(0, 0, size / 2, Math.PI, Math.PI * 2, false); ctx.fill();
+                // アクセントライン（スーパーボール等）
+                if (colors.accent) {
+                    ctx.strokeStyle = colors.accent; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(0, 0, size / 2 - 2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+                }
+                // 外枠
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(0, 0, size / 2, 0, Math.PI * 2); ctx.stroke();
+                // 中央線
+                ctx.beginPath(); ctx.moveTo(-size / 2, 0); ctx.lineTo(size / 2, 0); ctx.stroke();
+                // 中央ボタン
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(0, 0, size / 6, 0, Math.PI * 2); ctx.fill();
+                ctx.stroke();
+                ctx.beginPath(); ctx.arc(0, 0, size / 12, 0, Math.PI * 2); ctx.stroke();
+                // 成功時ゴールドエフェクト
+                if (status === 'success') {
+                    ctx.shadowBlur = 15; ctx.shadowColor = '#fbbf24'; ctx.stroke();
+                }
+                ctx.restore();
+            };
+
+            // Canvas描画ループ
+            useEffect(() => {
+                const canvas = battleCanvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                let frameId;
+
+                const render = () => {
+                    const w = canvas.width, h = canvas.height;
+                    const t = Date.now();
+                    ctx.save();
+                    if (battleShake > 0) ctx.translate((Math.random()-0.5)*battleShake, (Math.random()-0.5)*battleShake);
+
+                    // 背景グラデーション（戦闘フィールド風）
+                    const grad = ctx.createLinearGradient(0,0,0,h);
+                    grad.addColorStop(0,'#1a1a2e'); grad.addColorStop(0.4,'#16213e'); grad.addColorStop(1,'#0f3460');
+                    ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
+
+                    // 地面（グラデーション付きバトルフィールド）
+                    const floorGrad = ctx.createLinearGradient(0, h*0.55, 0, h);
+                    floorGrad.addColorStop(0, '#2d4a3e'); floorGrad.addColorStop(1, '#1a332a');
+                    ctx.fillStyle = floorGrad;
+                    ctx.beginPath();
+                    ctx.moveTo(0, h*0.6); ctx.quadraticCurveTo(w*0.5, h*0.5, w, h*0.6);
+                    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.fill();
+
+                    // グリッドライン（奥行き感）
+                    ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+                    for (let i = 0; i < 8; i++) {
+                        const ly = h*0.55 + i * (h*0.06);
+                        ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(w, ly); ctx.stroke();
+                    }
+
+                    // P1足場（光る円）
+                    const p1Glow = ctx.createRadialGradient(w*0.22, h*0.82, 10, w*0.22, h*0.82, 110);
+                    p1Glow.addColorStop(0, 'rgba(59,130,246,0.3)'); p1Glow.addColorStop(1, 'rgba(59,130,246,0)');
+                    ctx.fillStyle = p1Glow; ctx.beginPath(); ctx.ellipse(w*0.22, h*0.82, 110, 28, 0, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = 'rgba(59,130,246,0.15)';
+                    ctx.beginPath(); ctx.ellipse(w*0.22, h*0.82, 90, 22, 0, 0, Math.PI*2); ctx.fill();
+
+                    // P2足場
+                    const p2Glow = ctx.createRadialGradient(w*0.75, h*0.38, 8, w*0.75, h*0.38, 80);
+                    p2Glow.addColorStop(0, 'rgba(239,68,68,0.3)'); p2Glow.addColorStop(1, 'rgba(239,68,68,0)');
+                    ctx.fillStyle = p2Glow; ctx.beginPath(); ctx.ellipse(w*0.75, h*0.38, 80, 18, 0, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = 'rgba(239,68,68,0.15)';
+                    ctx.beginPath(); ctx.ellipse(w*0.75, h*0.38, 65, 14, 0, 0, Math.PI*2); ctx.fill();
+
+                    // ポケモン描画
+                    const drawPoke = (img, x, y, size, action) => {
+                        ctx.save();
+                        if (action === 'hit') {
+                            ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
+                            ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*4);
+                        }
+                        // 影
+                        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                        ctx.beginPath(); ctx.ellipse(x+size/2, y+size-5, size*0.35, size*0.1, 0, 0, Math.PI*2); ctx.fill();
+                        if (img.complete && img.naturalWidth > 0) ctx.drawImage(img, x, y, size, size);
+                        ctx.restore();
+                    };
+                    // ボールがアクティブで飛行中以外はP2を隠す（ボールに入った演出）
+                    const isP2Visible = !(ballAnimRef.current.active && ballAnimRef.current.status !== 'flying');
+                    if (isP2Visible) {
+                        drawPoke(p2ImgRef.current, w*0.58, h*-0.05, 200, p2BAction);
+                    }
+                    drawPoke(p1ImgRef.current, w*-0.02, h*0.25, 270, p1Action);
+
+                    // ===== エフェクト描画（1Pと同じ window.drawEffect を使用） =====
+                    if (activeEffect) {
+                        const tx = activeEffect.target === 'p2' ? w * 0.75 : w * 0.25;
+                        const ty = activeEffect.target === 'p2' ? h * 0.25 : h * 0.7;
+                        if (window.drawEffect) {
+                            window.drawEffect(ctx, activeEffect, tx, ty, w, h);
+                        }
+                    }
+
+                    // モンスターボールアニメーション描画
+                    if (ballAnimRef.current.active) {
+                        const { status, ballType: bt } = ballAnimRef.current;
+                        const startX = w * 0.22, startY = h * 0.7;
+                        const targetX = w * 0.75, targetY = h * 0.25;
+
+                        if (status === 'flying') {
+                            const p = ballAnimRef.current.progress;
+                            const curX = startX + (targetX - startX) * p;
+                            const curY = startY + (targetY - startY) * p - Math.sin(p * Math.PI) * 120;
+                            drawPokeball(ctx, curX, curY, 24, p * Math.PI * 4, 'none', bt);
+                            ballAnimRef.current.progress = Math.min(1, p + 0.03);
+                        } else {
+                            // 揺れ + 成功エフェクト
+                            const shakeOffset = Math.sin(Date.now() / 60) * 8;
+                            const isActuallyShaking = (Date.now() % 700 < 350);
+                            drawPokeball(ctx, targetX, targetY + 30, 24, isActuallyShaking ? shakeOffset * 0.02 : 0, status, bt);
+                        }
+                    }
+
+                    // パーティクル描画
+                    const parts = battleParticles.current;
+                    for (let i = parts.length - 1; i >= 0; i--) {
+                        const p = parts[i];
+                        p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.02;
+                        if (p.life <= 0) { parts.splice(i, 1); continue; }
+                        ctx.fillStyle = p.color + Math.floor(p.life * 255).toString(16).padStart(2,'0');
+                        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI*2); ctx.fill();
+                    }
+
+                    // HPステータス表示（改良版）
+                    const drawStat = (x, y, data, curHp, maxHp, lvl, showExp) => {
+                        ctx.save();
+                        // 背景
+                        ctx.fillStyle = 'rgba(15,23,42,0.85)';
+                        ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
+                        const boxH = showExp ? 72 : 60;
+                        ctx.beginPath(); ctx.roundRect(x, y, 210, boxH, 10); ctx.fill(); ctx.stroke();
+                        // 名前 + レベル
+                        ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 14px DotGothic16, monospace';
+                        ctx.fillText(data.name, x+12, y+20);
+                        ctx.fillStyle = '#94a3b8'; ctx.font = '12px monospace';
+                        ctx.fillText(`Lv.${lvl}`, x+150, y+20);
+                        // HPラベル
+                        ctx.fillStyle = '#64748b'; ctx.font = '9px monospace';
+                        ctx.fillText('HP', x+12, y+35);
+                        // HPバー背景
+                        ctx.fillStyle = '#1e293b'; ctx.fillRect(x+28, y+28, 170, 10);
+                        // HPバー
+                        const hpP = maxHp > 0 ? curHp / maxHp : 0;
+                        const hpGrad = ctx.createLinearGradient(x+28, 0, x+198, 0);
+                        if (hpP > 0.5) { hpGrad.addColorStop(0,'#22c55e'); hpGrad.addColorStop(1,'#4ade80'); }
+                        else if (hpP > 0.2) { hpGrad.addColorStop(0,'#ca8a04'); hpGrad.addColorStop(1,'#eab308'); }
+                        else { hpGrad.addColorStop(0,'#dc2626'); hpGrad.addColorStop(1,'#ef4444'); }
+                        ctx.fillStyle = hpGrad; ctx.fillRect(x+28, y+28, 170*hpP, 10);
+                        // HP数値
+                        ctx.fillStyle = '#cbd5e1'; ctx.font = '11px monospace';
+                        ctx.textAlign = 'right';
+                        ctx.fillText(`${Math.ceil(curHp)}/${maxHp}`, x+198, y+52);
+                        ctx.textAlign = 'left';
+                        // EXPバー
+                        if (showExp) {
+                            ctx.fillStyle = '#64748b'; ctx.font = '9px monospace';
+                            ctx.fillText('EXP', x+12, y+66);
+                            ctx.fillStyle = '#1e293b'; ctx.fillRect(x+35, y+59, 163, 6);
+                            ctx.fillStyle = '#3b82f6'; ctx.fillRect(x+35, y+59, 163*expProgress, 6);
+                        }
+                        ctx.restore();
+                    };
+                    drawStat(20, 20, opponentPokemon, opponentHp, opponentPokemon.maxHp, opponentPokemon.level, false);
+                    drawStat(w-230, h-95, playerPokemon, playerHp, playerPokemon.maxHp, playerPokemon.level, true);
+
+                    ctx.restore();
+                    frameId = requestAnimationFrame(render);
+                };
+                render();
+                return () => cancelAnimationFrame(frameId);
+            }, [playerHp, opponentHp, p1Action, p2BAction, battleShake, activeEffect, expProgress]);
+
+            // ヒットアニメーション用の拡張版doAttack（既存のdoAttackを上書き風に使う）
+            const doAttackWithAnim = async (moveIndex, side) => {
+                if (busy || battleOver) return;
+                setBusy(true);
+                const isPlayer = side === 'player';
+                const attacker = isPlayer ? { ...playerPokemon, ...playerBoosts, curHp: playerHp } : { ...opponentPokemon, ...opponentBoosts, curHp: opponentHp };
+                const defender = isPlayer ? { ...opponentPokemon, ...opponentBoosts, curHp: opponentHp } : { ...playerPokemon, ...playerBoosts, curHp: playerHp };
+                const move = attacker.moves[moveIndex];
+                if (!move) { setBusy(false); return; }
+
+                addLog(`${attacker.name}の ${move.name}！`);
+                await new Promise(r => setTimeout(r, 500));
+
+                const hit = Math.random() * 100 <= move.acc;
+                if (!hit) {
+                    addLog('しかし こうげきは はずれた！');
+                } else if (move.status === 'def_up') {
+                    addLog(`${attacker.name}の ぼうぎょが あがった！`);
+                    if (isPlayer) setPlayerBoosts(prev => ({ ...prev, defBoost: prev.defBoost + 0.5 }));
+                    else setOpponentBoosts(prev => ({ ...prev, defBoost: prev.defBoost + 0.5 }));
+                } else if (move.status === 'atk_up') {
+                    addLog(`${attacker.name}の こうげきが あがった！`);
+                    if (isPlayer) setPlayerBoosts(prev => ({ ...prev, atkBoost: prev.atkBoost + 0.5 }));
+                    else setOpponentBoosts(prev => ({ ...prev, atkBoost: prev.atkBoost + 0.5 }));
+                } else if (move.status === 'poison') {
+                    addLog(`${defender.name}は どくを うけた！`);
+                    if (isPlayer) setOpponentBoosts(prev => ({ ...prev, poisoned: true }));
+                    else setPlayerBoosts(prev => ({ ...prev, poisoned: true }));
+                } else {
+                    const isMega = typeof isMegaPokemon === 'function' && isMegaPokemon(attacker.masterId || '');
+                    const { damage, typeModifier } = BattleEngine.calcDamage(move, { ...attacker, level: attacker.level || 50 }, defender, isMega);
+                    const effMsg = BattleEngine.getEffectivenessMessage(typeModifier);
+                    if (effMsg) addLog(effMsg);
+
+                    // エフェクト発動（1Pと同じ window.drawEffect を使用）
+                    const effectName = move.effect || move.type; // 技固有エフェクト or タイプエフェクト
+                    const cw = 640, ch = 360;
+                    const efStartX = isPlayer ? cw * 0.25 : cw * 0.75;
+                    const efStartY = isPlayer ? ch * 0.7 : ch * 0.25;
+                    const efTargetX = isPlayer ? cw * 0.75 : cw * 0.25;
+                    const efTargetY = isPlayer ? ch * 0.25 : ch * 0.7;
+
+                    // BattleEngine.EFFECT_PARAMSからパラメータ取得（あれば）
+                    const efParams = window.Game.BattleEngine.EFFECT_PARAMS[effectName] || { step: 0.02, delay: 25, wait: 600 };
+
+                    setActiveEffect({
+                        type: effectName,
+                        target: isPlayer ? 'p2' : 'p1',
+                        startX: efStartX, startY: efStartY,
+                        targetX: efTargetX, targetY: efTargetY,
+                        progress: 0
+                    });
+
+                    // エフェクトアニメーション（progress 0→1）
+                    for (let ep = 0; ep <= 1; ep += efParams.step) {
+                        beamProgressRef.current = ep;
+                        setActiveEffect(prev => prev ? { ...prev, progress: ep } : null);
+                        await new Promise(r => setTimeout(r, efParams.delay));
+                    }
+                    await new Promise(r => setTimeout(r, efParams.wait));
+                    setActiveEffect(null);
+
+                    // ヒットパーティクル生成
+                    const hitX = isPlayer ? 640*0.75 : 640*0.15;
+                    const hitY = isPlayer ? 360*0.15 : 360*0.6;
+                    for (let pi = 0; pi < 15; pi++) {
+                        battleParticles.current.push({
+                            x: hitX, y: hitY,
+                            vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*6 - 2,
+                            size: 3 + Math.random()*4, color: '#ffffff', life: 1
+                        });
+                    }
+
+                    // ヒットアニメーション + シェイク
+                    if (isPlayer) { setP2BAction('hit'); } else { setP1Action('hit'); }
+                    setBattleShake(move.power > 70 ? 15 : 8);
+                    setTimeout(() => setBattleShake(0), 500);
+
+                    if (isPlayer) {
+                        const newHp = Math.max(0, opponentHp - damage);
+                        setOpponentHp(newHp);
+                        await new Promise(r => setTimeout(r, 400));
+                        setP2BAction('idle');
+                        if (newHp <= 0) {
+                            addLog(`${opponentPokemon.name}は たおれた！`);
+                            setBattleOver(true); setBusy(false);
+                            setTimeout(() => onWin(opponentPokemon), 1500);
+                            return;
+                        }
+                    } else {
+                        const newHp = Math.max(0, playerHp - damage);
+                        setPlayerHp(newHp);
+                        await new Promise(r => setTimeout(r, 400));
+                        setP1Action('idle');
+                        if (newHp <= 0) {
+                            addLog(`${playerPokemon.name}は たおれた！`);
+                            setBattleOver(true); setBusy(false);
+                            setTimeout(() => onLose(), 1500);
+                            return;
+                        }
+                    }
+                }
+
+                await new Promise(r => setTimeout(r, 500));
+
+                if (isPlayer) {
+                    setTurn('opponent');
+                    setBusy(false);
+                    setTimeout(() => {
+                        const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
+                        doAttackWithAnim(cpuMove, 'opponent');
+                    }, 800);
+                } else {
+                    setTurn('player');
+                    setBusy(false);
+                }
+            };
+
+            const tryFlee = () => {
+                if (busy || battleOver) return;
+                if (battleType !== 'wild') {
+                    addLog('トレーナーせんからは にげられない！');
+                    return;
+                }
+                if (Encounter.tryFlee(playerPokemon.speed, opponentPokemon.speed)) {
+                    addLog('うまく にげきれた！');
+                    setBattleOver(true);
+                    setTimeout(onFlee, 1000);
+                } else {
+                    addLog('にげられなかった！');
+                    setTurn('opponent');
+                    setTimeout(() => {
+                        const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
+                        doAttackWithAnim(cpuMove, 'opponent');
+                    }, 800);
+                }
+            };
+
+            const tryThrowBall = async (ballType) => {
+                if (busy || battleOver || !isCatchable) return;
+                setShowBallSelect(false);
+                setBusy(true);
+
+                addLog(`${Items[ballType]?.name || 'ボール'}を なげた！`);
+
+                // ボール飛行アニメーション開始
+                ballAnimRef.current = { active: true, progress: 0, status: 'flying', shakeCount: 0, ballType };
+                await new Promise(r => setTimeout(r, 1000)); // 飛行アニメ待ち
+
+                // ボールがポケモンに当たった → 揺れフェーズへ
+                ballAnimRef.current.status = 'shaking';
+
+                const target = { ...opponentPokemon, currentHp: opponentHp };
+                const result = Catching.tryCatch(target, ballType);
+
+                for (let i = 1; i <= 3; i++) {
+                    await new Promise(r => setTimeout(r, 700));
+                    if (!result.success && i === result.shakes) {
+                        // ボールから抜け出した！
+                        ballAnimRef.current.active = false;
+                        addLog(`だめだ！ ${opponentPokemon.name}は ボールから ぬけだした！`);
+                        setBattleShake(5);
+                        setTimeout(() => setBattleShake(0), 300);
+                        await new Promise(r => setTimeout(r, 600));
+                        setTurn('opponent');
+                        setBusy(false);
+                        setTimeout(() => {
+                            const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
+                            doAttackWithAnim(cpuMove, 'opponent');
+                        }, 800);
+                        return;
+                    }
+                    ballAnimRef.current.shakeCount = i;
+                    addLog(`... ${i}かい ゆれた`);
+                }
+
+                // 捕獲成功！
+                addLog(`やったー！ ${opponentPokemon.name}を つかまえた！`);
+                ballAnimRef.current.status = 'success';
+                setBattleOver(true);
+                setBusy(false);
+                setTimeout(() => {
+                    ballAnimRef.current.active = false;
+                    onCatch(opponentPokemon, ballType);
+                }, 1500);
+            };
+
+            const ballItems = playerItems.filter(pi => Items[pi.itemKey]?.type === 'ball' && pi.quantity > 0);
+
+            return (
+                <div className="bg-slate-800 rounded-3xl shadow-2xl overflow-hidden border-4 border-slate-600 select-none font-pixel">
+                    {/* Header */}
+                    <div className="bg-slate-900 p-3 text-white flex justify-between items-center px-4 border-b-2 border-slate-700">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${turn === 'player' ? 'bg-green-400 animate-pulse' : 'bg-slate-600'}`}></div>
+                            <span className="text-sm font-bold">{playerPokemon.name}</span>
+                        </div>
+                        <span className="text-xs opacity-50 italic">{opponentName || `VS ${opponentPokemon.name}`}</span>
+                    </div>
+
+                    {/* Battle Canvas */}
+                    <div className="relative bg-black overflow-hidden" style={{ aspectRatio: '16/9' }}>
+                        <canvas ref={battleCanvasRef} width={640} height={360} className="w-full h-full object-contain" style={{ imageRendering: 'pixelated' }} />
+                        {/* 勝敗オーバーレイ（にげた時は表示しない） */}
+                        {battleOver && (opponentHp <= 0 || playerHp <= 0) && (
+                            <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
+                                <div className="text-3xl font-black text-yellow-400">
+                                    {playerHp <= 0 ? '敗北...' : `${opponentPokemon.name}を たおした！`}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Log Display */}
+                    <div className="bg-slate-900 p-4 border-t-4 border-slate-700 h-24 flex items-center shadow-inner">
+                        <div className="text-white text-lg border-l-4 border-yellow-500 pl-3">
+                            {logs[0] || ''}
+                        </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-t-4 border-slate-700 bg-slate-800">
+                        {showBallSelect ? (
+                            <div className="col-span-2 p-3">
+                                <p className="text-white text-sm mb-2 text-yellow-400">ボールを えらべ！</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {ballItems.map(pi => (
+                                        <button key={pi.itemKey} onClick={() => tryThrowBall(pi.itemKey)}
+                                            className="bg-red-700 hover:bg-red-600 p-2 rounded-xl text-white text-sm border-2 border-red-500 font-bold">
+                                            {Items[pi.itemKey]?.icon} {Items[pi.itemKey]?.name} x{pi.quantity}
+                                        </button>
+                                    ))}
+                                    <button onClick={() => setShowBallSelect(false)} className="bg-slate-700 text-white p-2 rounded-xl text-sm border border-slate-500">もどる</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-2 gap-2 p-3 bg-slate-900/50 border-r-0 md:border-r-4 border-slate-700">
+                                    {playerPokemon.moves.map((move, idx) => (
+                                        <button key={move.name} onClick={() => doAttackWithAnim(idx, 'player')}
+                                            disabled={turn !== 'player' || busy || battleOver}
+                                            className={`p-2 md:p-3 text-[10px] md:text-xs font-bold rounded-xl border-2 transition-all pixel-border break-words text-center min-w-0 leading-tight ${
+                                                turn === 'player' && !busy && !battleOver
+                                                    ? 'bg-slate-700 text-white border-slate-500 hover:border-yellow-400 active:translate-y-1'
+                                                    : 'bg-slate-800 text-slate-600 border-transparent opacity-50'}`}>
+                                            {move.name}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-2 p-3 gap-2 bg-slate-800">
+                                    {isCatchable && ballItems.length > 0 && (
+                                        <button onClick={() => setShowBallSelect(true)}
+                                            disabled={turn !== 'player' || busy || battleOver}
+                                            className={`col-span-2 p-2 font-bold rounded-xl border-2 transition-all text-sm shadow-lg ${
+                                                turn === 'player' && !busy && !battleOver
+                                                    ? 'bg-red-600 text-white border-red-400 hover:bg-red-500 active:translate-y-1'
+                                                    : 'bg-slate-800 text-slate-600 border-transparent opacity-50'}`}>
+                                            モンスターボール
+                                        </button>
+                                    )}
+                                    <button onClick={tryFlee}
+                                        disabled={busy || battleOver}
+                                        className="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-white border-2 border-slate-600 p-2 text-xs font-bold rounded-xl transition-all">
+                                        にげる
+                                    </button>
+                                    <div className="flex items-center justify-center bg-slate-900/40 rounded-xl border border-slate-700">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{turn === 'player' ? 'Your Turn' : 'CPU...'}</span>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ===== バトル結果画面 =====
+        const BattleResultScreen = ({ result, expGained, leveledUp, pokemon, evolvedTo, evolvedToId, onContinue }) => (
+            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                <h2 className={`text-3xl mb-4 ${result === 'win' ? 'text-yellow-400' : result === 'caught' ? 'text-green-400' : 'text-red-400'}`}>
+                    {result === 'win' ? '勝利！' : result === 'caught' ? 'つかまえた！' : '敗北...'}
+                </h2>
+                {(result === 'win' || result === 'caught') && expGained > 0 && (
+                    <div className="mb-4">
+                        <p className="text-lg">{pokemon?.name}は {expGained}EXP もらった！</p>
+                        {leveledUp && <p className="text-yellow-400 text-xl mt-2 levelup-glow">レベルアップ！ Lv.{pokemon?.level}</p>}
+                    </div>
+                )}
+                {/* 進化演出 */}
+                {evolvedTo && evolvedToId && (
+                    <div className="my-6 p-4 bg-gradient-to-b from-yellow-900/40 to-purple-900/40 rounded-2xl border-2 border-yellow-500">
+                        <p className="text-lg text-white mb-2">おや？ {pokemon?.name}の ようすが...！</p>
+                        <div className="flex items-center justify-center gap-4 my-3">
+                            <img src={getPokemonImageUrl(pokemon?.masterId)} className="w-16 h-16 opacity-50" />
+                            <span className="text-3xl text-yellow-400 animate-pulse">→</span>
+                            <img src={getPokemonImageUrl(evolvedToId)} className="w-20 h-20" style={{ filter: 'drop-shadow(0 0 15px rgba(251,191,36,0.8))' }} />
+                        </div>
+                        <p className="text-2xl font-black text-yellow-400 mt-2" style={{ textShadow: '0 0 20px rgba(251,191,36,0.6)' }}>
+                            {evolvedTo}に しんかした！
+                        </p>
+                    </div>
+                )}
+                <button onClick={onContinue}
+                    className="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-2xl font-bold text-xl border-4 border-blue-400 hover:border-yellow-400 transition-all">
+                    つぎへ
+                </button>
+            </div>
+        );
+
+        // ===== トレーナー登場画面（本物のポケモンゲーム風） =====
+        const TrainerIntroScreen = ({ trainer, trainerId, onBattle }) => {
+            const [phase, setPhase] = useState(0); // 0: 登場, 1: セリフ, 2: バトルへ
+            const trainerImage = trainer.image || TrainerSprites[trainer.type] || '';
+
+            useEffect(() => {
+                // フェーズ自動遷移
+                const t1 = setTimeout(() => setPhase(1), 1500);
+                const t2 = setTimeout(() => setPhase(2), 3500);
+                return () => { clearTimeout(t1); clearTimeout(t2); };
+            }, []);
+
+            return (
+                <div className="bg-black rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel overflow-hidden relative"
+                    style={{ minHeight: '400px' }}
+                    onClick={() => { if (phase >= 1) onBattle(); }}>
+                    {/* 背景エフェクト - 斜めストライプ（ポケモン風） */}
+                    <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute inset-0" style={{
+                            background: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.03) 20px, rgba(255,255,255,0.03) 40px)'
+                        }}></div>
+                        {/* スポットライト */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-96"
+                            style={{ background: 'radial-gradient(ellipse at center top, rgba(255,200,50,0.15) 0%, transparent 70%)' }}></div>
+                    </div>
+
+                    <div className="relative z-10 flex flex-col items-center justify-center p-6" style={{ minHeight: '400px' }}>
+                        {/* トレーナー画像 */}
+                        <div className={`transition-all duration-700 ${phase >= 0 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+                            {trainerImage ? (
+                                <img src={trainerImage} alt={trainer.name}
+                                    className="w-40 h-40 object-contain mb-4 drop-shadow-lg"
+                                    style={{ imageRendering: 'pixelated', filter: 'drop-shadow(0 0 10px rgba(255,200,50,0.5))' }} />
+                            ) : (
+                                <div className="w-40 h-40 mb-4 flex items-center justify-center text-6xl">👤</div>
+                            )}
+                        </div>
+
+                        {/* 登場メッセージ */}
+                        <div className={`transition-all duration-500 ${phase >= 0 ? 'opacity-100' : 'opacity-0'}`}>
+                            <p className="text-xl text-center text-yellow-400 font-bold mb-2 animate-pulse">
+                                {trainer.name}が<br/>しょうぶを しかけてきた！
+                            </p>
+                        </div>
+
+                        {/* セリフ */}
+                        {phase >= 1 && (
+                            <div className="mt-4 bg-slate-900/80 border-2 border-slate-600 rounded-xl p-4 max-w-sm animate-fadeIn">
+                                <p className="text-sm text-slate-200 whitespace-pre-line">
+                                    {trainer.dialogue?.before || 'しょうぶだ！'}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* バトル開始ボタン */}
+                        {phase >= 2 && (
+                            <button onClick={onBattle}
+                                className="mt-6 bg-red-600 hover:bg-red-500 px-8 py-3 rounded-xl font-bold text-lg border-2 border-red-400 hover:border-yellow-400 transition-all animate-bounce">
+                                バトル！
+                            </button>
+                        )}
+
+                        {phase >= 1 && phase < 2 && (
+                            <p className="mt-4 text-xs text-slate-500 animate-pulse">タップして つづける</p>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ===== ジムバトル前画面 =====
+        const GymIntroScreen = ({ gym, onChallenge, onBack }) => (
+            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                <h2 className="text-2xl text-yellow-400 mb-2">ジム</h2>
+                {gym.image && (
+                    <img src={gym.image} alt={gym.leader.name}
+                        className="w-36 h-36 object-contain mx-auto mb-3"
+                        style={{ imageRendering: 'pixelated', filter: 'drop-shadow(0 0 8px rgba(255,200,50,0.4))' }} />
+                )}
+                <h3 className="text-xl text-red-400 mb-4">{gym.leader.name}</h3>
+                <p className="text-slate-300 mb-2">{gym.leader.title}</p>
+                <p className="text-sm text-slate-400 mb-4">ポケモン: {gym.team.length}びき (Lv.{gym.team[0].level}~{gym.team[gym.team.length-1].level})</p>
+                <div className="dialog-box text-left mb-6">{gym.dialogue.before}</div>
+                <div className="flex gap-4 justify-center">
+                    <button onClick={onChallenge} className="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-xl font-bold border-2 border-red-400 hover:border-yellow-400">ちょうせんする！</button>
+                    <button onClick={onBack} className="bg-slate-600 hover:bg-slate-500 px-6 py-3 rounded-xl border border-slate-500">まだ やめておく</button>
+                </div>
+            </div>
+        );
+
+        // ===== 四天王・チャンピオン戦前画面 =====
+        const EliteIntroScreen = ({ opponent, index, onChallenge }) => (
+            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                <h2 className="text-2xl text-yellow-400 mb-2">ポケモンリーグ</h2>
+                {opponent.image && (
+                    <img src={opponent.image} alt={opponent.name}
+                        className="w-36 h-36 object-contain mx-auto mb-3"
+                        style={{ imageRendering: 'pixelated', filter: 'drop-shadow(0 0 8px rgba(255,200,50,0.4))' }} />
+                )}
+                <h3 className="text-xl text-red-400 mb-2">{opponent.name}</h3>
+                <p className="text-slate-300 mb-4">{opponent.title}</p>
+                <div className="dialog-box text-left mb-6">{opponent.dialogue.before}</div>
+                <button onClick={onChallenge} className="bg-red-600 hover:bg-red-500 px-8 py-3 rounded-xl font-bold border-2 border-red-400 hover:border-yellow-400">バトル！</button>
+            </div>
+        );
+
+        // ===== エンディング =====
+        const EndingScreen = ({ onTitle }) => (
+            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-8 text-center">
+                <h1 className="text-4xl text-yellow-400 mb-6">🏆 おめでとう！</h1>
+                <p className="text-xl mb-4">きみは あたらしい<br/>���ケモンリーグ チャンピオンだ！</p>
+                <p className="text-slate-400 mb-8">すべての ジムリーダー、してんのう、<br/>チャンピオンを たおした！</p>
+                <button onClick={onTitle} className="bg-yellow-600 hover:bg-yellow-500 px-8 py-3 rounded-2xl font-bold text-xl border-4 border-yellow-400">タイトルに もどる</button>
+            </div>
+        );
+
+        // ===== メイン App =====
+        const App = () => {
+            const [screen, setScreen] = useState('title');
+            const [playerId, setPlayerId] = useState(null);
+            const [playerName, setPlayerName] = useState('');
+            const [playerMoney, setPlayerMoney] = useState(3000);
+            const [party, setParty] = useState([]);
+            const [allPokemons, setAllPokemons] = useState([]);
+            const [playerItems, setPlayerItems] = useState([]);
+            const [progress, setProgress] = useState(null);
+            const [badges, setBadges] = useState([]);
+            const [hasSaveData, setHasSaveData] = useState(false);
+            const [currentTownId, setCurrentTownId] = useState(null);
+            const [currentRouteId, setCurrentRouteId] = useState(null);
+            const [currentMapId, setCurrentMapId] = useState(null);
+            const [mapEntryPos, setMapEntryPos] = useState(null);
+            const [playerMapPos, setPlayerMapPos] = useState(null); // プレイヤーのマップ上の位置（App側で管理）
+            const [battleOpponent, setBattleOpponent] = useState(null);
+            const [battleType, setBattleType] = useState('wild');
+            const [battleTrainerId, setBattleTrainerId] = useState(null);
+            const [battleResult, setBattleResult] = useState(null);
+            const [gymId, setGymId] = useState(null);
+            const [eliteIndex, setEliteIndex] = useState(0);
+            const [healed, setHealed] = useState(false);
+            const [dialogueQueue, setDialogueQueue] = useState([]);
+            const [currentDialogue, setCurrentDialogue] = useState(null);
+            const screenHistory = useRef([]);
+
+            // 初回ロード: セーブデータ確認
+            useEffect(() => {
+                (async () => {
+                    const players = await Repo.getAllPlayers();
+                    setHasSaveData(players.length > 0);
+                })();
+            }, []);
+
+            // データリロード
+            const reloadData = async (pid) => {
+                const p = await Repo.getPlayer(pid);
+                if (p) {
+                    setPlayerName(p.name);
+                    setPlayerMoney(p.money);
+                }
+                const pokes = await Repo.getOwnedPokemons(pid);
+                setAllPokemons(pokes);
+                setParty(pokes.filter(p => p.isInParty === 1));
+                const items = await Repo.getItems(pid);
+                setPlayerItems(items);
+                const prog = await Repo.getProgress(pid);
+                setProgress(prog);
+                setBadges(prog?.badges || []);
+            };
+
+            // 画面遷移ヘルパー
+            const navigate = (newScreen) => {
+                screenHistory.current.push(screen);
+                setScreen(newScreen);
+            };
+            const goBack = () => {
+                const prev = screenHistory.current.pop();
+                setScreen(prev || 'world_map');
+            };
+
+            // === ハンドラー ===
+
+            const handleNewGame = () => {
+                navigate('starter_select');
+            };
+
+            const handleContinue = async () => {
+                const players = await Repo.getAllPlayers();
+                if (players.length > 0) {
+                    const pid = players[0].id;
+                    setPlayerId(pid);
+                    await reloadData(pid);
+                    const prog = await Repo.getProgress(pid);
+                    const townId = prog?.currentTown || 'masara_town';
+                    if (window.Game.Data.Maps[townId]) {
+                        const m = window.Game.Data.Maps[townId];
+                        setCurrentMapId(townId);
+                        setCurrentTownId(townId);
+                        setMapEntryPos(null);
+                        setPlayerMapPos(m?.playerStart || { x: 7, y: 10 });
+                        navigate('rpg_map');
+                    } else {
+                        navigate('world_map');
+                    }
+                }
+            };
+
+            const handleStarterSelect = async (starterKey) => {
+                const name = 'プレイヤー';
+                const pid = await Repo.createPlayer(name);
+                setPlayerId(pid);
+                const starter = Leveling.createPokemon(starterKey, 5);
+                await Repo.addOwnedPokemon(pid, starter);
+                await reloadData(pid);
+                // マサラタウンのマップに直接入る
+                const startMap = window.Game.Data.Maps['masara_town'];
+                setCurrentMapId('masara_town');
+                setCurrentTownId('masara_town');
+                setMapEntryPos(null);
+                setPlayerMapPos(startMap?.playerStart || { x: 7, y: 10 });
+                navigate('rpg_map');
+            };
+
+            const handleSelectTown = (townId) => {
+                setCurrentTownId(townId);
+                setHealed(false);
+                if (window.Game.Data.Maps[townId]) {
+                    const m = window.Game.Data.Maps[townId];
+                    setCurrentMapId(townId);
+                    setMapEntryPos(null);
+                    setPlayerMapPos(m?.playerStart || { x: 7, y: 10 });
+                    navigate('rpg_map');
+                } else {
+                    navigate('town');
+                }
+            };
+
+            const handleRoute = (routeId) => {
+                setCurrentRouteId(routeId);
+                if (window.Game.Data.Maps[routeId]) {
+                    setCurrentMapId(routeId);
+                    setMapEntryPos(null);
+                    navigate('rpg_map');
+                } else {
+                    navigate('route');
+                }
+            };
+
+            const handleMapChange = (newMapId, entryPos) => {
+                const map = window.Game.Data.Maps[newMapId];
+                const pos = entryPos || map?.playerStart || { x: 7, y: 10 };
+                setCurrentMapId(newMapId);
+                setMapEntryPos(pos);
+                setPlayerMapPos(pos);
+                if (Towns[newMapId]) {
+                    setCurrentTownId(newMapId);
+                }
+            };
+
+            const [interactionMessage, setInteractionMessage] = useState(null);
+
+            const handleMapInteraction = (action) => {
+                if (action === 'professor_oak' || action === 'oak_lab') {
+                    if (party.length === 0) {
+                        navigate('starter_select');
+                    } else {
+                        setInteractionMessage('オーキドはかせ「がんばっておるな！\nもっと たくさんの ポケモンを つかまえるのじゃ！」');
+                        setTimeout(() => setInteractionMessage(null), 3000);
+                    }
+                } else if (action === 'player_house') {
+                    setInteractionMessage('ママ「いってらっしゃい！\nきを つけてね！」');
+                    setTimeout(() => setInteractionMessage(null), 2500);
+                }
+            };
+
+            const handleEncounter = (wildPokemon) => {
+                setBattleOpponent(wildPokemon);
+                setBattleType('wild');
+                setBattleTrainerId(null);
+                navigate('battle');
+            };
+
+            const handleTrainerBattle = (trainerId) => {
+                const trainer = Trainers[trainerId];
+                if (!trainer) return;
+                setBattleTrainerId(trainerId);
+                setBattleType('trainer');
+                navigate('trainer_intro');
+            };
+
+            const handleTrainerIntroBattle = () => {
+                const trainer = Trainers[battleTrainerId];
+                if (!trainer) return;
+                const first = trainer.team[0];
+                const pokemon = Leveling.createPokemon(first.pokemon, first.level);
+                setBattleOpponent(pokemon);
+                navigate('battle');
+            };
+
+            const handleGymChallenge = () => {
+                const gym = GymLeaders[gymId];
+                if (!gym) return;
+                const first = gym.team[0];
+                const pokemon = Leveling.createPokemon(first.pokemon, first.level);
+                setBattleOpponent(pokemon);
+                setBattleType('gym');
+                setBattleTrainerId(gymId);
+                navigate('battle');
+            };
+
+            const handleEliteChallenge = () => {
+                const opponent = eliteIndex < EliteFour.length ? EliteFour[eliteIndex] : Champion;
+                const first = opponent.team[0];
+                const pokemon = Leveling.createPokemon(first.pokemon, first.level);
+                setBattleOpponent(pokemon);
+                setBattleType('elite');
+                setBattleTrainerId(null);
+                navigate('battle');
+            };
+
+            const handleBattleWin = async (defeated) => {
+                const lead = party[0];
+                if (!lead) return;
+
+                // EXP計算
+                const isGym = battleType === 'gym';
+                const isTrainer = battleType === 'trainer' || battleType === 'gym' || battleType === 'elite';
+                const expGained = Leveling.calcBattleExp(defeated.level, isTrainer, isGym);
+                const updated = Leveling.addExp(lead, expGained);
+
+                // 進化チェック
+                let evolvedTo = null;
+                if (updated.leveledUp) {
+                    const evolvedId = Leveling.checkEvolution({ ...lead, level: updated.level });
+                    if (evolvedId && POKEMON_DATA[evolvedId]) {
+                        evolvedTo = evolvedId;
+                        const evolvedData = POKEMON_DATA[evolvedId];
+                        const newStats = Leveling.calcStatsForLevel({ masterId: evolvedId }, updated.level);
+                        await Repo.updatePokemon(lead.id, {
+                            masterId: evolvedId,
+                            name: evolvedData.name,
+                            type: evolvedData.type,
+                            level: updated.level,
+                            exp: updated.exp,
+                            maxHp: newStats.maxHp,
+                            attack: newStats.attack,
+                            defense: newStats.defense,
+                            speed: newStats.speed,
+                            currentHp: newStats.maxHp,
+                            moves: JSON.stringify(evolvedData.moves)
+                        });
+                    } else {
+                        await Repo.updatePokemon(lead.id, {
+                            level: updated.level,
+                            exp: updated.exp,
+                            maxHp: updated.maxHp || lead.maxHp,
+                            attack: updated.attack || lead.attack,
+                            defense: updated.defense || lead.defense,
+                            speed: updated.speed || lead.speed,
+                            currentHp: Math.min(lead.currentHp || lead.maxHp, updated.maxHp || lead.maxHp)
+                        });
+                    }
+                } else {
+                    await Repo.updatePokemon(lead.id, {
+                        level: updated.level,
+                        exp: updated.exp,
+                        maxHp: updated.maxHp || lead.maxHp,
+                        attack: updated.attack || lead.attack,
+                        defense: updated.defense || lead.defense,
+                        speed: updated.speed || lead.speed,
+                        currentHp: Math.min(lead.currentHp || lead.maxHp, updated.maxHp || lead.maxHp)
+                    });
+                }
+
+                // トレーナー撃破記録 & お金
+                if (battleTrainerId && battleType === 'trainer') {
+                    const trainer = Trainers[battleTrainerId];
+                    await Repo.addDefeatedTrainer(playerId, battleTrainerId);
+                    if (trainer?.reward) {
+                        await Repo.updatePlayerMoney(playerId, playerMoney + trainer.reward);
+                    }
+                }
+
+                // ジム勝利
+                if (battleType === 'gym' && gymId) {
+                    const gym = GymLeaders[gymId];
+                    if (gym) {
+                        await Repo.addBadge(playerId, gym.badge);
+                        await Repo.updatePlayerMoney(playerId, playerMoney + gym.reward);
+                    }
+                }
+
+                // 四天王/チャンピオン
+                if (battleType === 'elite') {
+                    const opponent = eliteIndex < EliteFour.length ? EliteFour[eliteIndex] : Champion;
+                    if (opponent.reward) {
+                        await Repo.updatePlayerMoney(playerId, playerMoney + opponent.reward);
+                    }
+                }
+
+                await Repo.addBattleLog(playerId, {
+                    opponentType: battleType,
+                    opponentName: defeated.name,
+                    result: 'win'
+                });
+
+                await reloadData(playerId);
+
+                setBattleResult({
+                    result: 'win',
+                    expGained,
+                    leveledUp: updated.leveledUp,
+                    pokemon: { ...lead, level: updated.level },
+                    evolvedTo: evolvedTo ? POKEMON_DATA[evolvedTo]?.name : null,
+                    evolvedToId: evolvedTo
+                });
+                setScreen('battle_result');
+            };
+
+            const handleBattleLose = async () => {
+                await reloadData(playerId);
+                setBattleResult({ result: 'lose', expGained: 0 });
+                setScreen('battle_result');
+            };
+
+            const handleBattleFlee = () => {
+                goBack();
+            };
+
+            const handleCatch = async (pokemon, ballType) => {
+                await Repo.useItem(playerId, ballType, 1);
+                await Repo.addOwnedPokemon(playerId, pokemon);
+
+                const lead = party[0];
+                if (lead) {
+                    const expGained = Leveling.calcBattleExp(pokemon.level, false, false);
+                    const updated = Leveling.addExp(lead, expGained);
+                    await Repo.updatePokemon(lead.id, {
+                        level: updated.level, exp: updated.exp,
+                        maxHp: updated.maxHp || lead.maxHp, attack: updated.attack || lead.attack,
+                        defense: updated.defense || lead.defense, speed: updated.speed || lead.speed
+                    });
+                    await reloadData(playerId);
+                    setBattleResult({ result: 'caught', expGained, leveledUp: updated.leveledUp, pokemon: { ...lead, level: updated.level } });
+                } else {
+                    await reloadData(playerId);
+                    setBattleResult({ result: 'caught', expGained: 0 });
+                }
+                setScreen('battle_result');
+            };
+
+            const handleBattleResultContinue = () => {
+                if (battleType === 'elite' && battleResult?.result === 'win') {
+                    if (eliteIndex < EliteFour.length) {
+                        setEliteIndex(eliteIndex + 1);
+                        setScreen('elite_intro');
+                        return;
+                    } else {
+                        setScreen('ending');
+                        return;
+                    }
+                }
+                // RPGマップに戻る
+                if (currentMapId && window.Game.Data.Maps[currentMapId]) {
+                    setScreen('rpg_map');
+                    return;
+                }
+                goBack();
+                const prev = screenHistory.current.pop();
+                if (prev) setScreen(prev);
+            };
+
+            const handleBuy = async (itemKey) => {
+                const item = Items[itemKey];
+                if (!item || playerMoney < item.price) return;
+                await Repo.updatePlayerMoney(playerId, playerMoney - item.price);
+                await Repo.addItem(playerId, itemKey, 1);
+                await reloadData(playerId);
+            };
+
+            const handleHeal = async () => {
+                await Repo.healAllParty(playerId);
+                setHealed(true);
+                await reloadData(playerId);
+            };
+
+            const handleSwapParty = async (pokemonId, inParty) => {
+                if (inParty) {
+                    const currentParty = allPokemons.filter(p => p.isInParty === 1);
+                    if (currentParty.length >= 6) return;
+                }
+                await Repo.setPartyMember(pokemonId, inParty);
+                await reloadData(playerId);
+            };
+
+            // === レンダリング ===
+            switch (screen) {
+                case 'title':
+                    return <TitleScreen onNewGame={handleNewGame} onContinue={handleContinue} hasSaveData={hasSaveData} />;
+
+                case 'starter_select':
+                    return <StarterSelect onSelect={handleStarterSelect} />;
+
+                case 'world_map':
+                    return <WorldMap progress={progress} badges={badges}
+                        onSelectTown={handleSelectTown}
+                        onOpenParty={() => navigate('party')}
+                        onOpenBag={() => navigate('bag')} />;
+
+                case 'rpg_map': {
+                    const mapDat = window.Game.Data.Maps[currentMapId];
+                    const currentPos = playerMapPos || mapDat?.playerStart || { x: 7, y: 10 };
+                    return <RPGMapScreen
+                        key={currentMapId}
+                        mapId={currentMapId}
+                        playerPos={currentPos}
+                        setPlayerPos={setPlayerMapPos}
+                        progress={progress}
+                        badges={badges}
+                        onEncounter={handleEncounter}
+                        onTrainerBattle={handleTrainerBattle}
+                        onGym={(gId) => { setGymId(gId); navigate('gym_intro'); }}
+                        onShop={(shopTownId) => { setCurrentTownId(shopTownId || currentTownId); navigate('shop'); }}
+                        onPokecenter={() => navigate('pokecenter')}
+                        onMapChange={handleMapChange}
+                        onInteraction={handleMapInteraction}
+                        onOpenParty={() => navigate('party')}
+                        interactionMessage={interactionMessage}
+                    />;
+                }
+
+                case 'town': {
+                    const town = Towns[currentTownId];
+                    if (!town) return null;
+                    if (currentTownId === 'sekiei_plateau') {
+                        return <EliteIntroScreen opponent={EliteFour[0]} index={0}
+                            onChallenge={() => { setEliteIndex(0); handleEliteChallenge(); }} />;
+                    }
+                    // RPGマップがあればそちらに遷移
+                    if (window.Game.Data.Maps[currentTownId]) {
+                        setCurrentMapId(currentTownId);
+                        setMapEntryPos(null);
+                        setScreen('rpg_map');
+                        return null;
+                    }
+                    return null;
+                }
+
+                case 'route': {
+                    // RPGマップがあればそちらに遷移
+                    if (window.Game.Data.Maps[currentRouteId]) {
+                        setCurrentMapId(currentRouteId);
+                        setMapEntryPos(null);
+                        setScreen('rpg_map');
+                        return null;
+                    }
+                    return null;
+                }
+
+                case 'battle': {
+                    const lead = party[0];
+                    if (!lead || !battleOpponent) {
+                        setScreen('world_map');
+                        return null;
+                    }
+                    return <BattleScreen
+                        playerPokemon={lead}
+                        opponentPokemon={battleOpponent}
+                        opponentName={battleType === 'wild' ? `やせいの ${battleOpponent.name}` : battleOpponent.name}
+                        isCatchable={battleType === 'wild'}
+                        playerItems={playerItems}
+                        battleType={battleType}
+                        onWin={handleBattleWin}
+                        onLose={handleBattleLose}
+                        onFlee={handleBattleFlee}
+                        onCatch={handleCatch} />;
+                }
+
+                case 'trainer_intro': {
+                    const trainer = Trainers[battleTrainerId];
+                    if (!trainer) { setScreen('world_map'); return null; }
+                    return <TrainerIntroScreen trainer={trainer} trainerId={battleTrainerId}
+                        onBattle={handleTrainerIntroBattle} />;
+                }
+
+                case 'battle_result':
+                    return <BattleResultScreen {...battleResult} onContinue={handleBattleResultContinue} />;
+
+                case 'gym_intro': {
+                    const gym = GymLeaders[gymId];
+                    if (!gym) return null;
+                    return <GymIntroScreen gym={gym}
+                        onChallenge={handleGymChallenge}
+                        onBack={() => setScreen('town')} />;
+                }
+
+                case 'elite_intro': {
+                    const opponent = eliteIndex < EliteFour.length ? EliteFour[eliteIndex] : Champion;
+                    return <EliteIntroScreen opponent={opponent} index={eliteIndex}
+                        onChallenge={handleEliteChallenge} />;
+                }
+
+                case 'shop':
+                    return <ShopScreen townId={currentTownId} playerMoney={playerMoney} playerItems={playerItems}
+                        onBuy={handleBuy} onBack={() => setScreen(currentMapId ? 'rpg_map' : 'town')} />;
+
+                case 'pokecenter':
+                    return <PokecenterScreen onHeal={handleHeal} onBack={() => setScreen(currentMapId ? 'rpg_map' : 'town')} healed={healed} />;
+
+                case 'party':
+                    return <PartyScreen party={party} allPokemons={allPokemons} onBack={goBack} onSwap={handleSwapParty} />;
+
+                case 'bag':
+                    return <BagScreen items={playerItems} onBack={goBack} />;
+
+                case 'ending':
+                    return <EndingScreen onTitle={() => setScreen('title')} />;
+
+                default:
+                    return <TitleScreen onNewGame={handleNewGame} onContinue={handleContinue} hasSaveData={hasSaveData} />;
+            }
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

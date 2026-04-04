@@ -152,21 +152,22 @@ const MOVES_DATA = {
   "オーバーヒート": { power: 130, acc: 90, type: "fire", effect: "beam" }
 };
 
-// タイプ相性チャート
+// タイプ相性チャート（攻撃タイプ → 防御タイプ: 倍率）Gen6+原作準拠
+// 1.0の場合は省略（コード側でデフォルト1.0）
 const TYPE_CHART = {
-  electric: { water: 2.0, bug: 1.0, electric: 0.5, steel: 0.5, dragon: 1.0, fire: 1.0, flying: 0.5, fighting: 1.0, ghost: 1.0, psychic: 1.0, poison: 1.0, ground: 0, grass: 1.0 },
-  water: { electric: 1.0, water: 0.5, bug: 1.0, steel: 1.0, dragon: 1.0, fire: 2.0, flying: 1.0, fighting: 1.0, ghost: 1.0, psychic: 1.0, poison: 1.0, ground: 2.0, grass: 0.5 },
-  bug: { water: 1.0, electric: 1.0, bug: 1.0, flying: 0.5, steel: 0.5, dragon: 1.0, fire: 0.5, fighting: 0.5, ghost: 0.5, psychic: 2.0, poison: 0.5, ground: 1.0, grass: 2.0 },
-  flying: { bug: 2.0, electric: 0.5, water: 1.0, steel: 0.5, dragon: 1.0, fire: 1.0, fighting: 2.0, ghost: 1.0, psychic: 1.0, poison: 1.0, ground: 1.0, grass: 0.5 },
-  steel: { electric: 0.5, water: 0.5, bug: 1.0, flying: 1.0, steel: 0.5, dragon: 1.0, fire: 0.5, fighting: 2.0, ghost: 1.0, psychic: 0.5, poison: 0, ground: 1.0, grass: 1.0 },
-  dragon: { electric: 1.0, water: 1.0, bug: 1.0, flying: 1.0, steel: 0.5, dragon: 2.0, fire: 1.0, fighting: 1.0, ghost: 1.0, psychic: 1.0, poison: 1.0, ground: 1.0, grass: 1.0 },
-  fire: { electric: 1.0, water: 0.5, bug: 2.0, flying: 1.0, steel: 2.0, dragon: 0.5, fire: 0.5, fighting: 1.0, ghost: 1.0, psychic: 1.0, poison: 1.0, ground: 1.0, grass: 2.0 },
-  normal: { electric: 1.0, water: 1.0, bug: 1.0, flying: 1.0, steel: 0.5, dragon: 1.0, fire: 1.0, fighting: 2.0, ghost: 0, psychic: 1.0, poison: 1.0, ground: 1.0, grass: 1.0 },
-  fighting: { electric: 1.0, water: 1.0, bug: 0.5, flying: 0.5, steel: 1.0, dragon: 1.0, fire: 1.0, fighting: 1.0, ghost: 0, psychic: 0.5, poison: 0.5, ground: 1.0, grass: 1.0 },
-  ghost: { electric: 1.0, water: 1.0, bug: 0.5, flying: 1.0, steel: 1.0, dragon: 1.0, fire: 1.0, fighting: 0, ghost: 2.0, psychic: 2.0, poison: 0.5, ground: 1.0, grass: 1.0 },
-  psychic: { electric: 1.0, water: 1.0, bug: 2.0, flying: 1.0, steel: 0.5, dragon: 1.0, fire: 1.0, fighting: 2.0, ghost: 2.0, psychic: 0.5, poison: 2.0, ground: 1.0, grass: 1.0 },
-  poison: { electric: 1.0, water: 1.0, bug: 1.0, flying: 1.0, steel: 0, dragon: 1.0, fire: 1.0, fighting: 1.0, ghost: 0.5, psychic: 2.0, poison: 0.5, ground: 0.5, grass: 2.0 },
-  ground: { electric: 2.0, water: 1.0, bug: 0.5, flying: 0, steel: 2.0, dragon: 1.0, fire: 2.0, fighting: 1.0, ghost: 1.0, psychic: 1.0, poison: 2.0, ground: 1.0, grass: 0.5 },
-  grass: { electric: 0.5, water: 2.0, bug: 0.5, flying: 0.5, steel: 0.5, dragon: 0.5, fire: 0.5, fighting: 1.0, ghost: 1.0, psychic: 1.0, poison: 0.5, ground: 2.0, grass: 0.5 }
+  electric: { water: 2.0, flying: 2.0, electric: 0.5, grass: 0.5, ground: 0, dragon: 0.5 },
+  water:    { fire: 2.0, ground: 2.0, water: 0.5, grass: 0.5, dragon: 0.5 },
+  bug:      { grass: 2.0, psychic: 2.0, fire: 0.5, fighting: 0.5, poison: 0.5, flying: 0.5, ghost: 0.5, steel: 0.5 },
+  flying:   { bug: 2.0, fighting: 2.0, grass: 2.0, electric: 0.5, steel: 0.5 },
+  steel:    { dragon: 2.0, steel: 0.5, fire: 0.5, water: 0.5, electric: 0.5 },
+  dragon:   { dragon: 2.0, steel: 0.5 },
+  fire:     { bug: 2.0, grass: 2.0, steel: 2.0, fire: 0.5, water: 0.5, dragon: 0.5 },
+  normal:   { ghost: 0, steel: 0.5 },
+  fighting: { normal: 2.0, steel: 2.0, bug: 0.5, flying: 0.5, poison: 0.5, psychic: 0.5, ghost: 0 },
+  ghost:    { ghost: 2.0, psychic: 2.0, normal: 0, steel: 0.5 },
+  psychic:  { fighting: 2.0, poison: 2.0, psychic: 0.5, steel: 0.5 },
+  poison:   { grass: 2.0, poison: 0.5, ground: 0.5, ghost: 0.5, steel: 0 },
+  ground:   { electric: 2.0, fire: 2.0, poison: 2.0, steel: 2.0, bug: 0.5, grass: 0.5, flying: 0 },
+  grass:    { water: 2.0, ground: 2.0, bug: 0.5, fire: 0.5, grass: 0.5, poison: 0.5, flying: 0.5, dragon: 0.5, steel: 0.5 }
 };
 
