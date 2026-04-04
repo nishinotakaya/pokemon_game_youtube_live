@@ -1034,6 +1034,31 @@
                 const move = attacker.moves[moveIndex];
                 if (!move) { setBusy(false); return; }
 
+                // 毒ダメージ処理（攻撃前）
+                if (attacker.poisoned) {
+                    const poisonDmg = Math.max(1, Math.floor((isPlayer ? playerPokemon.maxHp : opponentPokemon.maxHp) * 0.125));
+                    addLog(`${attacker.name}は どくの ダメージを うけた！`);
+                    if (isPlayer) {
+                        const newHp = Math.max(0, playerHp - poisonDmg);
+                        setPlayerHp(newHp);
+                        if (newHp <= 0) {
+                            setBattleOver(true); setBusy(false);
+                            setTimeout(() => onLose(), 1500);
+                            return;
+                        }
+                    } else {
+                        const newHp = Math.max(0, opponentHp - poisonDmg);
+                        setOpponentHp(newHp);
+                        if (newHp <= 0) {
+                            addLog(`${opponentPokemon.name}は たおれた！`);
+                            setBattleOver(true); setBusy(false);
+                            setTimeout(() => onWin(opponentPokemon, playerHp), 1500);
+                            return;
+                        }
+                    }
+                    await new Promise(r => setTimeout(r, 600));
+                }
+
                 addLog(`${attacker.name}の ${move.name}！`);
                 await new Promise(r => setTimeout(r, 500));
 
@@ -1049,6 +1074,10 @@
                     if (isPlayer) setPlayerBoosts(prev => ({ ...prev, atkBoost: prev.atkBoost + 0.5 }));
                     else setOpponentBoosts(prev => ({ ...prev, atkBoost: prev.atkBoost + 0.5 }));
                 } else if (move.status === 'poison') {
+                    // 毒エフェクト
+                    setActiveEffect({ type: 'poison', target: isPlayer ? 'p2' : 'p1', progress: 0 });
+                    await new Promise(r => setTimeout(r, 600));
+                    setActiveEffect(null);
                     addLog(`${defender.name}は どくを うけた！`);
                     if (isPlayer) setOpponentBoosts(prev => ({ ...prev, poisoned: true }));
                     else setPlayerBoosts(prev => ({ ...prev, poisoned: true }));
