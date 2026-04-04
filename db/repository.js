@@ -114,10 +114,10 @@ window.Game.Repository = {
     },
 
     async healAllParty(playerId) {
-        const party = await window.Game.DB.ownedPokemons
-            .where({ playerId, isInParty: 1 })
+        const allPokemon = await window.Game.DB.ownedPokemons
+            .where('playerId').equals(playerId)
             .toArray();
-        for (const p of party) {
+        for (const p of allPokemon) {
             await window.Game.DB.ownedPokemons.update(p.id, {
                 currentHp: p.maxHp
             });
