@@ -2103,10 +2103,22 @@
                         onTrainerBattle={handleTrainerBattle}
                         onGym={(gId) => {
                             const gym = GymLeaders[gId];
-                            if (gym && badges.includes(gym.badge)) {
+                            if (!gym) return;
+                            // バッジ取得済み
+                            if (badges.includes(gym.badge)) {
                                 setInteractionMessage(`${gym.leader.name}「おまえは もう ${gym.badgeName}を もっているぞ！\nつぎの まちへ すすむのだ！」`);
                                 setTimeout(() => setInteractionMessage(null), 3000);
                                 return;
+                            }
+                            // サカキは他4つのバッジが必要
+                            if (gId === 'tokiwa_gym') {
+                                const otherBadges = ['nibi_badge', 'hanada_badge', 'kuchiba_badge', 'tamamushi_badge'];
+                                const hasAll = otherBadges.every(b => badges.includes(b));
+                                if (!hasAll) {
+                                    setInteractionMessage('トキワジムの ドアは かたく しまっている...\nすべてのバッジを あつめてから こい！');
+                                    setTimeout(() => setInteractionMessage(null), 3000);
+                                    return;
+                                }
                             }
                             setGymId(gId); navigate('gym_intro');
                         }}
