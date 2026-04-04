@@ -62,6 +62,19 @@
             opacity: 0;
             pointer-events: none;
         }
+
+        /* 2P対面モード用：フルスクリーン */
+        .battle-2p-fullscreen {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            max-width: none !important;
+            z-index: 9999;
+            border-radius: 0 !important;
+        }
     </style>
 </head>
 
@@ -97,7 +110,8 @@
 
         const App = () => {
             // --- State ---
-            const [gameState, setGameState] = useState('select');
+            const [gameState, setGameState] = useState('mode_select'); // mode_select, select, select_p2, battle
+            const [gameMode, setGameMode] = useState(null); // '1p' or '2p'
             const [p1, setP1] = useState(null);
             const [p2, setP2] = useState(null);
             const [turn, setTurn] = useState("player");
@@ -105,6 +119,7 @@
             const [over, setOver] = useState(false);
             const [logs, setLogs] = useState(["ポケモンを えらんでね！"]);
             const [bgmActive, setBgmActive] = useState(false);
+            const [p1SelectedKey, setP1SelectedKey] = useState(null); // 2P用: P1が選んだポケモン
 
             const [activeEffect, setActiveEffect] = useState(null);
             const [shake, setShake] = useState(0);
@@ -121,7 +136,6 @@
             const zapdosBackImageRef = useRef(null); // サンダー背後画像用（プレイヤー用、背景透過処理済み）
             const zapdosFrontImageRef = useRef(null); // サンダー表画像用（CPU用、背景透過処理済み）
             const evolvedPokemonImageRef = useRef(null);
-            const evolvedP1ImageRef = useRef(null); // 進化後のプレイヤーポケモン用
             const megaCharizardBackImageRef = useRef(null); // メガリザードン背後画像用
             const megaLucarioBackImageRef = useRef(null); // メガルカリオ背後画像用
             const megaRayquazaBackImageRef = useRef(null); // メガレックウザ背後画像用
@@ -376,22 +390,31 @@
             const startBattle = (p1Key, p2Key) => {
                 // 進化済みの場合は進化後のキーを使用
                 const actualP1Key = getEvolvedKey(p1Key);
+                const actualP2Key = getEvolvedKey(p2Key);
                 const char1 = getPokemonWithMoves(actualP1Key);
-                const char2 = getPokemonWithMoves(p2Key);
+                const char2 = getPokemonWithMoves(actualP2Key);
                 if (!char1 || !char2) {
-                    console.error('ポケモンデータが見つかりません:', { p1Key, p2Key, actualP1Key, char1, char2 });
+                    console.error('ポケモンデータが見つかりません:', { p1Key, p2Key, actualP1Key, actualP2Key, char1, char2 });
                     return;
                 }
 
                 // 音声を開始（ユーザーインタラクション後なので可能）
                 startAudio();
 
-                setP1({ ...char1, curHp: char1.hp, defBoost: 1, atkBoost: 1, key: p1Key, poisoned: false });
-                setP2({ ...char2, curHp: char2.hp, defBoost: 1, atkBoost: 1, key: p2Key, poisoned: false });
+                setP1({ ...char1, curHp: char1.hp, defBoost: 1, atkBoost: 1, key: actualP1Key, poisoned: false });
+                setP2({ ...char2, curHp: char2.hp, defBoost: 1, atkBoost: 1, key: actualP2Key, poisoned: false });
                 setGameState('battle');
-                setBgmActive(true); // バトル開始でBGMを有効化
-                setLogs([`ゆけっ！ ${char1.name}！`, `野生の ${char2.name}が あらわれた！`]);
-                setTurn("player");
+                setBgmActive(true);
+                const p2Label = gameMode === '2p' ? '' : '野生の ';
+                // すばやさで先攻を決定
+                const p1Speed = char1.speed || 50;
+                const p2Speed = char2.speed || 50;
+                const firstTurn = p1Speed > p2Speed ? "player" : p1Speed < p2Speed ? "cpu" : (Math.random() > 0.5 ? "player" : "cpu");
+                const speedMsg = firstTurn === "player"
+                    ? `${char1.name}の ほうが はやい！ 先手だ！`
+                    : `${char2.name}の ほうが はやい！ 先手を とられた！`;
+                setLogs([speedMsg, `ゆけっ！ ${char1.name}！`, `${p2Label}${char2.name}が あらわれた！`]);
+                setTurn(firstTurn);
                 setOver(false);
                 ballAnimRef.current = { active: false, progress: 0, status: 'none', shakeCount: 0 };
                 beamProgressRef.current = 0;
@@ -1352,7 +1375,7 @@
 
                     const modifier = (TYPE_CHART[move.type]?.[defender.type] || 1.0) * (move.type === attacker.type ? 1.5 : 1.0);
                     // メガ進化ポケモンの場合は攻撃力を1.5倍に
-                    const isMegaEvolved = (attacker.key === 'raichu' || attacker.key === 'mega_rayquaza' || attacker.key === 'mega_charizard' || attacker.key === 'mega_lucario' || attacker.key === 'mega_scizor');
+                    const isMegaEvolved = isMegaPokemon(attacker.key);
                     const megaMultiplier = isMegaEvolved ? 1.5 : 1.0;
                     const damage = Math.max(1, Math.floor(((move.power * 0.3) * modifier * (0.85 + Math.random() * 0.15) * attacker.atkBoost * megaMultiplier) / defender.defBoost));
 
@@ -1365,10 +1388,11 @@
                         const newHp = Math.max(0, prev.curHp - damage);
                         if (newHp <= 0) {
                             if (isP1) {
-                                // プレイヤーの勝利
                                 setOver('win');
-                                // 進化チェック
-                                checkEvolution(p1.key);
+                                // 1Pモード時のみ進化チェック
+                                if (gameMode === '1p') {
+                                    checkEvolution(p1.key);
+                                }
                             } else {
                                 setOver('lose');
                             }
@@ -1388,16 +1412,16 @@
                 setBusy(false);
             };
 
-            // CPU Logic
+            // CPU Logic（1Pモード時のみ自動行動）
             useEffect(() => {
-                if (gameState === 'battle' && turn === "cpu" && !busy && !over) {
+                if (gameMode === '1p' && gameState === 'battle' && turn === "cpu" && !busy && !over) {
                     const timer = setTimeout(() => {
                         const moveIdx = Math.floor(Math.random() * p2.moves.length);
                         executeTurn("cpu", moveIdx);
                     }, 1200);
                     return () => clearTimeout(timer);
                 }
-            }, [turn, busy, over, gameState]);
+            }, [turn, busy, over, gameState, gameMode]);
 
             // --- Canvas Drawing ---
             const drawPokeball = (ctx, x, y, size, rotation, status) => {
@@ -1459,36 +1483,16 @@
                         ctx.restore();
                     };
 
-                    // バサギリ（ID 900）の場合はカスタム画像を使用
-                    if (p1.key === 'scyther_alt') {
-                        // バサギリのカスタム画像を使用（既に読み込まれている）
-                    } else {
-                        // 進化済みの場合は特別なURLを使用
-                        const actualP1Key = getEvolvedKey(p1.key);
-                        // メガポケモンはローカル画像を使用するため、URL設定をスキップ
-                        if (!isMegaPokemon(actualP1Key)) {
-                            let p1ImageUrl;
-                            if (p1.key === 'black_rayquaza') {
-                                // ブラックレックウザは特別な画像を使用
-                                p1ImageUrl = 'https://img.pokemondb.net/sprites/black-white/back-shiny/rayquaza.png';
-                            } else if (actualP1Key === 'mega_rayquaza') {
-                                p1ImageUrl = 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/rayquaza.gif';
-                            } else {
-                                p1ImageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${p1.id}.png`;
-                            }
-
-                            // 進化済みの場合は別の画像参照を使用
-                            if (actualP1Key !== p1.key && !isMegaPokemon(actualP1Key)) {
-                                if (!evolvedP1ImageRef.current || evolvedP1ImageRef.current.src !== p1ImageUrl) {
-                                    const img = new Image();
-                                    img.src = p1ImageUrl;
-                                    evolvedP1ImageRef.current = img;
-                                }
-                            } else {
-                                if (imagesRef.current.p1.src !== p1ImageUrl) {
-                                    imagesRef.current.p1.src = p1ImageUrl;
-                                }
-                            }
+                    // P1画像URLの設定（メガポケモンはローカル画像を使用）
+                    if (!isMegaPokemon(p1.key) && p1.key !== 'scyther_alt') {
+                        let p1ImageUrl;
+                        if (p1.key === 'black_rayquaza') {
+                            p1ImageUrl = 'https://img.pokemondb.net/sprites/black-white/back-shiny/rayquaza.png';
+                        } else {
+                            p1ImageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${p1.id}.png`;
+                        }
+                        if (imagesRef.current.p1.src !== p1ImageUrl) {
+                            imagesRef.current.p1.src = p1ImageUrl;
                         }
                     }
 
@@ -1547,9 +1551,6 @@
                         }
                         ctx.restore();
                     } else {
-                        // 進化済みの場合は進化後の画像を使用
-                        const actualP1Key = getEvolvedKey(p1.key);
-
                         // メガポケモンの描画
                         const megaImageRefs = {
                             megaCharizardBackImageRef,
@@ -1557,15 +1558,8 @@
                             megaLucarioBackImageRef,
                             megaScizorBackImageRef
                         };
-                        if (!drawMegaPokemonPlayer(ctx, actualP1Key, p1X, p1Y, p1Size, p1Action, megaImageRefs)) {
-                            let p1Image = imagesRef.current.p1;
-                            if (actualP1Key !== p1.key && evolvedP1ImageRef.current) {
-                                // 進化済みの場合は進化後の画像を使用
-                                if (evolvedP1ImageRef.current.complete && evolvedP1ImageRef.current.naturalWidth > 0) {
-                                    p1Image = evolvedP1ImageRef.current;
-                                }
-                            }
-                            drawPoke(p1Image, p1X, p1Y, p1Size, p1Action);
+                        if (!drawMegaPokemonPlayer(ctx, p1.key, p1X, p1Y, p1Size, p1Action, megaImageRefs)) {
+                            drawPoke(imagesRef.current.p1, p1X, p1Y, p1Size, p1Action);
                         }
                     }
 
@@ -1810,7 +1804,35 @@
             }, [gameState, p1, p2, activeEffect, shake, p1Action, p2Action, evolutionEffect]);
 
             // --- UI Components ---
-            if (gameState === 'select') {
+
+            // モード選択画面
+            if (gameState === 'mode_select') {
+                return (
+                    <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-8 flex flex-col items-center gap-6">
+                        <h1 className="text-3xl md:text-4xl text-center text-yellow-400 drop-shadow-md">ポケモンバトル</h1>
+                        <p className="text-slate-400 text-sm">モードを えらんでね！</p>
+                        <div className="flex flex-col gap-4 w-full max-w-xs">
+                            <button
+                                onClick={() => { setGameMode('1p'); setGameState('select'); }}
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all border-4 border-blue-400 hover:border-yellow-400 shadow-lg active:translate-y-1"
+                            >
+                                1P vs CPU
+                                <div className="text-xs text-blue-200 mt-1">ひとりで あそぶ</div>
+                            </button>
+                            <button
+                                onClick={() => { setGameMode('2p'); setGameState('select'); }}
+                                className="bg-red-600 hover:bg-red-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all border-4 border-red-400 hover:border-yellow-400 shadow-lg active:translate-y-1"
+                            >
+                                2P たいせん
+                                <div className="text-xs text-red-200 mt-1">ふたりで あそぶ</div>
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'select' || gameState === 'select_p2') {
+                const isP2Selecting = gameState === 'select_p2';
                 // タイプを日本語に変換する関数
                 const getTypeNameJP = (type) => {
                     const typeMap = {
@@ -1854,14 +1876,41 @@
                     const pokemonName = normalizeKana((displayData || data).name);
                     const pokemonType = normalizeKana((displayData || data).type);
                     const pokemonTypeJP = normalizeKana(getTypeNameJP((displayData || data).type));
-                    // ひらがな・カタカナを統一して検索（英語タイプ名と日本語タイプ名の両方で検索可能）
                     return pokemonName.includes(keyword) || pokemonType.includes(keyword) || pokemonTypeJP.includes(keyword);
+                };
+
+                // ポケモン選択時の共通ハンドラ
+                const handlePokemonSelect = (selectedKey) => {
+                    if (gameMode === '2p' && !isP2Selecting) {
+                        // 2Pモード: P1選択後、P2の選択画面へ
+                        setP1SelectedKey(selectedKey);
+                        setSearchKeyword('');
+                        setGameState('select_p2');
+                    } else if (gameMode === '2p' && isP2Selecting) {
+                        // 2Pモード: P2選択後、バトル開始
+                        startBattle(p1SelectedKey, selectedKey);
+                    } else {
+                        // 1Pモード: CPU相手をランダム選択してバトル開始
+                        const evolvedKeys = Object.values(EVOLUTION_MAP).map(e => e.evolved);
+                        const allKeys = Object.keys(POKEMON_DATA).filter(k => {
+                            if (evolvedKeys.includes(k)) {
+                                const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
+                                return baseK && isEvolved(baseK) ? k !== selectedKey : false;
+                            }
+                            const evoKey = getEvolvedKey(k);
+                            return evoKey !== selectedKey;
+                        });
+                        const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
+                        startBattle(selectedKey, randomKey);
+                    }
                 };
 
                 return (
                     <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel flex flex-col max-h-[90vh] md:max-h-[85vh]">
                         <div className="p-4 md:p-6 pb-2 md:pb-4 flex-shrink-0">
-                            <h1 className="text-2xl md:text-3xl text-center text-yellow-400 drop-shadow-md mb-4">ポケモンを えらぼう！</h1>
+                            <h1 className="text-2xl md:text-3xl text-center text-yellow-400 drop-shadow-md mb-4">
+                                {isP2Selecting ? '2P: ポケモンを えらぼう！' : (gameMode === '2p' ? '1P: ポケモンを えらぼう！' : 'ポケモンを えらぼう！')}
+                            </h1>
                             {/* 検索入力欄 */}
                             <div className="flex items-center justify-center mb-2">
                                 <input
@@ -1930,30 +1979,20 @@
                                                     return (
                                                         <button
                                                             key={key}
-                                                            onClick={() => {
-                                                                const allKeys = Object.keys(POKEMON_DATA).filter(k => {
-                                                                    if (evolvedKeys.includes(k)) {
-                                                                        const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
-                                                                        return baseK && isEvolved(baseK) ? k !== key : false;
-                                                                    }
-                                                                    const evoKey = getEvolvedKey(k);
-                                                                    return evoKey !== key;
-                                                                });
-                                                                const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
-                                                                startBattle(key, randomKey);
-                                                            }}
-                                                            className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative"
+                                                            onClick={() => handlePokemonSelect(key)}
+                                                            className={`bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative ${isP2Selecting && p1SelectedKey === key ? 'opacity-30 pointer-events-none' : ''}`}
                                                         >
                                                             <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
                                                             <span className="text-xl mt-2">{data.name}</span>
                                                             <span className="text-xs text-slate-400">{getTypeNameJP(data.type)}タイプ</span>
+                                                            <span className="text-[10px] text-slate-500">HP{data.hp} すばやさ{data.speed}</span>
                                                         </button>
                                                     );
                                                 }
                                                 return null;
                                             }
 
-                                            // 進化前のポケモンで、進化済みの場合はスキップ（進化後のポケモンが表示されるため）
+                                            // 進化前のポケモンで、進化済みの場合はスキップ
                                             if (EVOLUTION_MAP[key] && isEvolved(key)) {
                                                 return null;
                                             }
@@ -1962,11 +2001,9 @@
                                             if (EVOLUTION_MAP[key] && !isEvolved(key)) {
                                                 const displayKey = getEvolvedKey(key);
                                                 const displayData = POKEMON_DATA[displayKey] || data;
-                                                // 検索フィルタリング
                                                 if (!filterPokemon(key, data, displayKey, displayData)) {
                                                     return null;
                                                 }
-                                                // メガポケモンの画像URL取得
                                                 let imageUrl = getMegaPokemonImageUrl(displayKey, megaScizorFrontImageUrl);
                                                 if (!imageUrl) {
                                                     imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${displayData.id}.png`;
@@ -1975,33 +2012,21 @@
                                                 return (
                                                     <button
                                                         key={key}
-                                                        onClick={() => {
-                                                            const allKeys = Object.keys(POKEMON_DATA).filter(k => {
-                                                                if (evolvedKeys.includes(k)) {
-                                                                    const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
-                                                                    return baseK && isEvolved(baseK) ? k !== displayKey : false;
-                                                                }
-                                                                const evoKey = getEvolvedKey(k);
-                                                                return evoKey !== displayKey;
-                                                            });
-                                                            const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
-                                                            startBattle(displayKey, randomKey);
-                                                        }}
-                                                        className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative"
+                                                        onClick={() => handlePokemonSelect(displayKey)}
+                                                        className={`bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center relative ${isP2Selecting && p1SelectedKey === displayKey ? 'opacity-30 pointer-events-none' : ''}`}
                                                     >
                                                         <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
                                                         <span className="text-xl mt-2">{displayData.name}</span>
                                                         <span className="text-xs text-slate-400">{getTypeNameJP(displayData.type)}タイプ</span>
+                                                        <span className="text-[10px] text-slate-500">HP{displayData.hp} すばやさ{displayData.speed}</span>
                                                     </button>
                                                 );
                                             }
 
                                             // 進化できないポケモンはそのまま表示
-                                            // 検索フィルタリング
                                             if (!filterPokemon(key, data, null, data)) {
                                                 return null;
                                             }
-                                            // ブラックレックウザは特別な画像を使用
                                             let imageUrl;
                                             if (key === 'black_rayquaza') {
                                                 imageUrl = 'https://img.pokemondb.net/sprites/black-white/shiny/rayquaza.png';
@@ -2012,23 +2037,13 @@
                                             return (
                                                 <button
                                                     key={key}
-                                                    onClick={() => {
-                                                        const allKeys = Object.keys(POKEMON_DATA).filter(k => {
-                                                            if (evolvedKeys.includes(k)) {
-                                                                const baseK = Object.keys(EVOLUTION_MAP).find(bk => EVOLUTION_MAP[bk].evolved === k);
-                                                                return baseK && isEvolved(baseK) ? k !== key : false;
-                                                            }
-                                                            const evoKey = getEvolvedKey(k);
-                                                            return evoKey !== key;
-                                                        });
-                                                        const randomKey = allKeys[Math.floor(Math.random() * allKeys.length)];
-                                                        startBattle(key, randomKey);
-                                                    }}
-                                                    className="bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center"
+                                                    onClick={() => handlePokemonSelect(key)}
+                                                    className={`bg-slate-700 hover:bg-slate-600 border-4 border-transparent hover:border-yellow-400 p-4 rounded-2xl transition-all group flex flex-col items-center ${isP2Selecting && p1SelectedKey === key ? 'opacity-30 pointer-events-none' : ''}`}
                                                 >
                                                     <img src={imageUrl} className="w-32 h-32 group-hover:scale-110 transition-transform" />
                                                     <span className="text-xl mt-2">{data.name}</span>
                                                     <span className="text-xs text-slate-400">{getTypeNameJP(data.type)}タイプ</span>
+                                                    <span className="text-[10px] text-slate-500">HP{data.hp} すばやさ{data.speed}</span>
                                                 </button>
                                             );
                                         })}
@@ -2036,36 +2051,158 @@
                                 );
                             })()}
                             {/* 進化済みのポケモンがある場合のみリセットボタンを表示（進化演出中は非表示） */}
-                            {Object.keys(EVOLUTION_MAP).some(key => isEvolved(key)) && !evolutionEffect && (
-                                <div className="mt-4 flex justify-center">
+                            <div className="mt-4 flex justify-center gap-4">
+                                {isP2Selecting && (
+                                    <button
+                                        onClick={() => { setGameState('select'); setP1SelectedKey(null); setSearchKeyword(''); }}
+                                        className="bg-slate-600 hover:bg-slate-500 text-white px-6 py-2 rounded-xl font-bold transition-all font-pixel border-2 border-slate-500"
+                                    >
+                                        1Pの選択に戻る
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => { setGameState('mode_select'); setGameMode(null); setP1SelectedKey(null); setSearchKeyword(''); }}
+                                    className="bg-slate-600 hover:bg-slate-500 text-white px-6 py-2 rounded-xl font-bold transition-all font-pixel border-2 border-slate-500"
+                                >
+                                    モード選択に戻る
+                                </button>
+                                {Object.keys(EVOLUTION_MAP).some(key => isEvolved(key)) && !evolutionEffect && (
                                     <button
                                         onClick={resetAllEvolutions}
                                         className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl font-bold transition-all font-pixel border-2 border-red-500"
                                     >
                                         進化をリセット
                                     </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 );
             }
 
+            // BGMコンポーネント（共通）
+            const BgmPlayer = () => bgmActive ? (
+                <iframe
+                    className="bgm-player"
+                    src="https://www.youtube.com/embed/Q53CDIGPJ58?start=407&end=492&autoplay=1&loop=1&playlist=Q53CDIGPJ58&enablejsapi=1"
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen={false}
+                    onLoad={startAudio}
+                ></iframe>
+            ) : null;
+
+            // 技ボタンコンポーネント（共通）
+            const MoveButtons = ({ pokemon, side, isActive, colorClass }) => (
+                <div className="grid grid-cols-2 gap-1.5 p-2">
+                    {pokemon.moves.map((move, idx) => (
+                        <button
+                            key={move.name}
+                            onClick={() => executeTurn(side, idx)}
+                            disabled={!isActive || busy || over}
+                            className={`p-2 text-[11px] font-bold rounded-xl border-2 transition-all break-words text-center min-w-0 leading-tight ${isActive && !busy && !over ? `${colorClass} active:translate-y-1` : "bg-slate-800 text-slate-600 border-transparent opacity-40"}`}
+                        >
+                            {move.name}
+                        </button>
+                    ))}
+                </div>
+            );
+
+            // ゲームオーバーオーバーレイ（共通）
+            const GameOverOverlay = () => {
+                if (evolutionComplete) {
+                    const evolvedData = POKEMON_DATA[evolutionComplete.evolvedKey];
+                    let imageUrl = getMegaPokemonImageUrl(evolutionComplete.evolvedKey, megaScizorFrontImageUrl);
+                    if (!imageUrl) imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${evolvedData.id}.png`;
+                    return (
+                        <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center text-white p-2 sm:p-4 z-20">
+                            <img src={imageUrl} className="w-[100px] h-[100px] md:w-[160px] md:h-[160px] object-contain drop-shadow-2xl animate-pulse" style={{ filter: 'drop-shadow(0 0 30px rgba(255, 255, 255, 0.8))' }} />
+                            <h2 className="text-xl md:text-3xl font-black my-3 font-pixel text-yellow-400 italic">{evolutionComplete.evolvedName}</h2>
+                            <button onClick={() => { setGameState('mode_select'); setBgmActive(false); setGameMode(null); setEvolutionComplete(null); }} className="bg-white text-slate-900 px-5 py-2 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel text-sm">タイトルに戻る</button>
+                        </div>
+                    );
+                }
+                if (over && !evolutionComplete) {
+                    return (
+                        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white p-4 z-20">
+                            <h2 className="text-4xl md:text-5xl font-black mb-6 font-pixel text-yellow-400 italic text-center">
+                                {gameMode === '2p' ? (over === 'win' ? "1P の 勝利！" : "2P の 勝利！") : (over === 'win' ? "勝利！" : over === 'caught' ? "つかまえた！" : "敗北...")}
+                            </h2>
+                            {!evolutionEffect && (
+                                <button onClick={() => { setGameState('mode_select'); setBgmActive(false); setGameMode(null); }} className="bg-white text-slate-900 px-10 py-3 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel">タイトルに戻る</button>
+                            )}
+                        </div>
+                    );
+                }
+                return null;
+            };
+
+            // ===== 2P 対面レイアウト =====
+            if (gameMode === '2p') {
+                return (
+                    <div className="bg-slate-900 shadow-2xl overflow-hidden select-none flex flex-col battle-2p-fullscreen">
+                        <BgmPlayer />
+
+                        {/* === 2P側（上端・180°回転） === */}
+                        <div style={{ transform: 'rotate(180deg)' }} className="flex-shrink-0 bg-slate-800 border-b-2 border-red-900">
+                            {/* 2PのHP・名前 */}
+                            <div className="flex items-center justify-between px-3 py-1 bg-red-900/40">
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2.5 h-2.5 rounded-full ${turn === 'cpu' ? 'bg-red-400 animate-pulse' : 'bg-slate-600'}`}></div>
+                                    <span className="text-xs font-bold text-red-300 font-pixel">2P {p2.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-24 h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${(p2.curHp / p2.hp) * 100}%` }}></div>
+                                    </div>
+                                    <span className="text-[10px] text-red-300 font-pixel">{p2.curHp}/{p2.hp}</span>
+                                </div>
+                            </div>
+                            {/* 2Pの技ボタン */}
+                            <MoveButtons pokemon={p2} side="cpu" isActive={turn === 'cpu'} colorClass="bg-red-700 text-white border-red-500 hover:border-yellow-400" />
+                        </div>
+
+                        {/* === バトルキャンバス（中央） === */}
+                        <div className="relative bg-black flex-1 min-h-0 overflow-hidden">
+                            <canvas ref={canvasRef} width={640} height={360} className="w-full h-full object-contain" />
+                            {/* ログ表示（オーバーレイ） */}
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 pointer-events-none">
+                                <div className="text-white text-sm font-pixel border-l-2 border-yellow-500 pl-2 truncate">
+                                    {logs[0] || ""}
+                                </div>
+                            </div>
+                            <GameOverOverlay />
+                        </div>
+
+                        {/* === 1P側（下端・通常向き） === */}
+                        <div className="flex-shrink-0 bg-slate-800 border-t-2 border-blue-900">
+                            {/* 1PのHP・名前 */}
+                            <div className="flex items-center justify-between px-3 py-1 bg-blue-900/40">
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2.5 h-2.5 rounded-full ${turn === 'player' ? 'bg-blue-400 animate-pulse' : 'bg-slate-600'}`}></div>
+                                    <span className="text-xs font-bold text-blue-300 font-pixel">1P {p1.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-24 h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(p1.curHp / p1.hp) * 100}%` }}></div>
+                                    </div>
+                                    <span className="text-[10px] text-blue-300 font-pixel">{p1.curHp}/{p1.hp}</span>
+                                </div>
+                            </div>
+                            {/* 1Pの技ボタン */}
+                            <MoveButtons pokemon={p1} side="player" isActive={turn === 'player'} colorClass="bg-blue-700 text-white border-blue-500 hover:border-yellow-400" />
+                            {/* にげるボタン */}
+                            <div className="px-2 pb-2">
+                                <button onClick={() => { setGameState('mode_select'); setBgmActive(false); setGameMode(null); }} className="w-full bg-slate-700 hover:bg-red-900 text-slate-400 hover:text-white border border-slate-600 p-1.5 text-[10px] font-bold rounded-lg transition-all font-pixel">にげる</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ===== 1P レイアウト（従来通り） =====
             return (
                 <div className="bg-slate-800 rounded-3xl shadow-2xl overflow-hidden border-4 border-slate-600 select-none">
-                    {/* BGM Player (YouTube IFrame - ユーザーインタラクション後に表示) */}
-                    {bgmActive && (
-                        <iframe
-                            className="bgm-player"
-                            src="https://www.youtube.com/embed/Q53CDIGPJ58?start=407&end=492&autoplay=1&loop=1&playlist=Q53CDIGPJ58&enablejsapi=1"
-                            allow="autoplay; encrypted-media"
-                            allowFullScreen={false}
-                            onLoad={() => {
-                                // iframeが読み込まれた後に音声コンテキストを開始
-                                startAudio();
-                            }}
-                        ></iframe>
-                    )}
+                    <BgmPlayer />
 
                     {/* Header */}
                     <div className="bg-slate-900 p-3 text-white flex justify-between items-center px-4 md:px-8 border-b-2 border-slate-700">
@@ -2079,67 +2216,7 @@
                     {/* Battle Canvas */}
                     <div className="relative bg-black overflow-hidden aspect-video">
                         <canvas ref={canvasRef} width={640} height={360} className="w-full h-full object-contain" />
-                        {/* 進化完了後の表示 */}
-                        {evolutionComplete && (
-                            <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center text-white p-2 sm:p-4 animate-in fade-in duration-500 overflow-hidden">
-                                <div className="flex flex-col items-center justify-center w-full h-full max-w-full">
-                                    {(() => {
-                                        const evolvedData = POKEMON_DATA[evolutionComplete.evolvedKey];
-                                        let imageUrl = getMegaPokemonImageUrl(evolutionComplete.evolvedKey, megaScizorFrontImageUrl);
-                                        if (!imageUrl) {
-                                            imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${evolvedData.id}.png`;
-                                        }
-                                        return (
-                                            <>
-                                                <div className="w-full flex justify-center items-center mb-2 sm:mb-3 md:mb-4 flex-shrink-0" style={{ minHeight: '60px', maxHeight: '20vh' }}>
-                                                    <img
-                                                        src={imageUrl}
-                                                        className="w-[80px] h-[80px] sm:w-[110px] sm:h-[110px] md:w-[160px] md:h-[160px] lg:w-[240px] lg:h-[240px] object-contain drop-shadow-2xl animate-pulse"
-                                                        style={{
-                                                            filter: 'drop-shadow(0 0 30px rgba(255, 255, 255, 0.8))',
-                                                            maxWidth: '40vw',
-                                                            maxHeight: '18vh',
-                                                            width: 'auto',
-                                                            height: 'auto'
-                                                        }}
-                                                        alt={evolutionComplete.evolvedName}
-                                                    />
-                                                </div>
-                                                <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-black mb-2 sm:mb-3 md:mb-6 font-pixel text-yellow-400 italic text-center drop-shadow-lg px-2 flex-shrink-0">
-                                                    {evolutionComplete.evolvedName}
-                                                </h2>
-                                                <button
-                                                    onClick={() => {
-                                                        setGameState('select');
-                                                        setBgmActive(false);
-                                                        setEvolutionComplete(null);
-                                                    }}
-                                                    className="bg-white text-slate-900 px-4 py-1 sm:px-5 sm:py-1.5 md:px-7 md:py-2 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel text-xs sm:text-sm md:text-base flex-shrink-0"
-                                                >
-                                                    タイトルに戻る
-                                                </button>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                        )}
-                        {over && !evolutionComplete && (
-                            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white p-4 animate-in fade-in duration-500">
-                                <h2 className="text-5xl font-black mb-6 font-pixel text-yellow-400 italic text-center">
-                                    {over === 'win' ? "勝利！" : over === 'caught' ? "つかまえた！" : "敗北..."}
-                                </h2>
-                                {/* 進化演出中はボタンを非表示 */}
-                                {!evolutionEffect && (
-                                    <button
-                                        onClick={() => { setGameState('select'); setBgmActive(false); }}
-                                        className="bg-white text-slate-900 px-10 py-3 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel"
-                                    >
-                                        タイトルに戻る
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                        <GameOverOverlay />
                     </div>
 
                     {/* Log Display */}
@@ -2151,7 +2228,6 @@
 
                     {/* Controls */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-t-4 border-slate-700 bg-slate-800">
-                        {/* Move Set */}
                         <div className="grid grid-cols-2 gap-2 p-3 md:p-4 bg-slate-900/50 border-r-0 md:border-r-4 border-slate-700">
                             {p1.moves.map((move, idx) => (
                                 <button
@@ -2164,7 +2240,6 @@
                                 </button>
                             ))}
                         </div>
-                        {/* Sub Options */}
                         <div className="grid grid-cols-2 p-3 md:p-4 gap-2 md:gap-3 bg-slate-800">
                             <button
                                 onClick={tryCatch}
@@ -2173,7 +2248,7 @@
                             >
                                 モンスターボール
                             </button>
-                            <button onClick={() => { setGameState('select'); setBgmActive(false); }} className="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-white border-2 border-slate-600 p-2 text-xs font-bold rounded-xl transition-all">にげる</button>
+                            <button onClick={() => { setGameState('mode_select'); setBgmActive(false); setGameMode(null); }} className="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-white border-2 border-slate-600 p-2 text-xs font-bold rounded-xl transition-all">にげる</button>
                             <div className="flex items-center justify-center bg-slate-900/40 rounded-xl border border-slate-700">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{turn === "player" ? "Your Turn" : "CPU..."}</span>
                             </div>

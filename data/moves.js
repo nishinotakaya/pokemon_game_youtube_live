@@ -28,7 +28,7 @@ const MOVES_DATA = {
   "エアスラッシュ": { power: 75, acc: 95, type: "flying" },
 
   // レックウザの技
-  "りゅうせいぐん": { power: 130, acc: 90, type: "dragon" },
+  "りゅうせいぐん": { power: 130, acc: 90, type: "dragon", effect: "dragon_meteor" },
   "かみなり": { power: 110, acc: 70, type: "electric" },
   "だいもんじ": { power: 110, acc: 85, type: "fire", effect: "dai_monji" },
 
@@ -47,7 +47,6 @@ const MOVES_DATA = {
   // ムゲンダイナの技
   "ムゲンストーム": { power: 140, acc: 95, type: "dragon", effect: "eternal_storm" },
   "どくどく": { power: 0, acc: 90, type: "poison", status: "poison", effect: "poison" },
-  "りゅうせいぐん": { power: 130, acc: 90, type: "dragon", effect: "dragon_meteor" },
   "エターナルビーム": { power: 160, acc: 90, type: "dragon", effect: "eternal_beam" },
 
   // メガ進化ポケモンの技
@@ -104,7 +103,53 @@ const MOVES_DATA = {
   "ラスターパージ": { power: 100, acc: 100, type: "psychic", effect: "latios_luster_purge" },
   "ドラゴンブレス": { power: 95, acc: 100, type: "dragon", effect: "latios_dragon_breath" },
   "サイコブースト": { power: 120, acc: 90, type: "psychic", effect: "latios_psycho_boost" },
-  "りゅうのいかり": { power: 110, acc: 100, type: "dragon", effect: "latios_outrage" }
+  "りゅうのいかり": { power: 110, acc: 100, type: "dragon", effect: "latios_outrage" },
+
+  // ガブリアスの技
+  "ドラゴンクロー": { power: 80, acc: 100, type: "dragon", effect: "dragon_meteor" },
+  "げきりん": { power: 120, acc: 100, type: "dragon", effect: "dragon_meteor" },
+  "ストーンエッジ": { power: 100, acc: 80, type: "ground", effect: "earthquake" },
+
+  // カイリューの技
+  "しんそく": { power: 80, acc: 100, type: "normal" },
+
+  // バンギラスの技
+  "かみくだく": { power: 80, acc: 100, type: "ghost", effect: "shadow_ball" },
+
+  // バシャーモの技
+  "ブレイズキック": { power: 85, acc: 90, type: "fire", effect: "bagfoon_blazing_punch" },
+  "スカイアッパー": { power: 85, acc: 95, type: "fighting", effect: "lucario_close_combat" },
+  "フレアドライブ": { power: 120, acc: 100, type: "fire", effect: "bagfoon_flare_blitz" },
+  "ブラストバーン": { power: 150, acc: 90, type: "fire", effect: "beam" },
+
+  // ゲッコウガの技
+  "みずしゅりけん": { power: 80, acc: 100, type: "water", effect: "salt_water" },
+  "あくのはどう": { power: 80, acc: 100, type: "ghost", effect: "shadow_ball" },
+  "ハイドロカノン": { power: 150, acc: 90, type: "water", effect: "hydro_pump" },
+  "かげぶんしん": { power: 0, acc: 100, type: "normal", status: "def_up" },
+
+  // ダークライの技
+  "ダークホール": { power: 0, acc: 80, type: "ghost", status: "poison", effect: "poison" },
+  "ダークパルス": { power: 80, acc: 100, type: "ghost", effect: "dark_vortex" },
+  "あくむ": { power: 95, acc: 100, type: "ghost", effect: "nightmare" },
+
+  // ギラティナの技
+  "シャドーダイブ": { power: 90, acc: 100, type: "ghost", effect: "shadow_ball" },
+  "ドラゴンダイブ": { power: 100, acc: 75, type: "dragon", effect: "dragon_meteor" },
+  "シャドーフォース": { power: 120, acc: 100, type: "ghost", effect: "phantom_burst" },
+  "げんしのちから": { power: 60, acc: 100, type: "ground", effect: "earth_power" },
+
+  // ボーマンダの技
+  "りゅうのまい": { power: 0, acc: 100, type: "dragon", status: "atk_up" },
+  "そらをとぶ": { power: 90, acc: 95, type: "flying" },
+
+  // メタグロスの技
+  "コメットパンチ": { power: 100, acc: 90, type: "steel", effect: "iron_head" },
+
+  // ゴウカザルの技
+  "インファイト": { power: 120, acc: 100, type: "fighting", effect: "lucario_close_combat" },
+  "マッハパンチ": { power: 40, acc: 100, type: "fighting", effect: "mega_punch" },
+  "オーバーヒート": { power: 130, acc: 90, type: "fire", effect: "beam" }
 };
 
 // タイプ相性チャート
