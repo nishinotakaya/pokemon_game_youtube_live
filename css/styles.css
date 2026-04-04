@@ -193,3 +193,17 @@ body {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* 進化演出 */
+@keyframes evolve-glow {
+    0% { transform: scale(0.3); opacity: 0; }
+    30% { transform: scale(1.2); opacity: 1; }
+    60% { transform: scale(0.8); opacity: 1; }
+    80% { transform: scale(1.5); opacity: 0.8; }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
+    50% { transform: translateY(-20px) scale(1.3); opacity: 1; }
+}

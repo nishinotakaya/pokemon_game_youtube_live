@@ -1049,6 +1049,36 @@
             }, [playerHp, opponentHp, p1Action, p2BAction, battleShake, activeEffect, expProgress]);
 
             // ヒットアニメーション用の拡張版doAttack（既存のdoAttackを上書き風に使う）
+            // ひんし時: 生きてるポケモンがいれば入れ替え、全滅なら負け
+            const [showFaintSwitch, setShowFaintSwitch] = useState(false);
+            const handlePlayerFaint = () => {
+                addLog(`${playerPokemon.name}は たおれた！`);
+                if (onSwitch) onSwitch(playerPokemon.id, 0);
+                const alive = (party || []).filter(p => p.id !== playerPokemon.id && p.currentHp > 0);
+                if (alive.length > 0) {
+                    setBusy(false);
+                    setShowFaintSwitch(true);
+                } else {
+                    setBattleOver(true); setBusy(false);
+                    setTimeout(() => onLose(), 1500);
+                }
+            };
+
+            // ひんし入れ替え選択
+            const faintSwitch = async (newPokemon) => {
+                setShowFaintSwitch(false);
+                setBusy(true);
+                setPlayerPokemon(newPokemon);
+                setPlayerHp(newPokemon.currentHp);
+                setPlayerBoosts({ atkBoost: 1, defBoost: 1, poisoned: false });
+                const backId = POKEMON_DATA[newPokemon.masterId]?.id || 25;
+                p1ImgRef.current.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${backId}.png`;
+                addLog(`ゆけっ！ ${newPokemon.name}！`);
+                await new Promise(r => setTimeout(r, 600));
+                setTurn('player');
+                setBusy(false);
+            };
+
             const doAttackWithAnim = async (moveIndex, side) => {
                 if (busy || battleOver) return;
                 setBusy(true);
@@ -1066,8 +1096,7 @@
                         const newHp = Math.max(0, playerHp - poisonDmg);
                         setPlayerHp(newHp);
                         if (newHp <= 0) {
-                            setBattleOver(true); setBusy(false);
-                            setTimeout(() => onLose(), 1500);
+                            handlePlayerFaint();
                             return;
                         }
                     } else {
@@ -1172,9 +1201,7 @@
                         await new Promise(r => setTimeout(r, 400));
                         setP1Action('idle');
                         if (newHp <= 0) {
-                            addLog(`${playerPokemon.name}は たおれた！`);
-                            setBattleOver(true); setBusy(false);
-                            setTimeout(() => onLose(), 1500);
+                            handlePlayerFaint();
                             return;
                         }
                     }
@@ -1319,8 +1346,28 @@
                     {/* Battle Canvas */}
                     <div className="relative bg-black overflow-hidden" style={{ aspectRatio: '16/9' }}>
                         <canvas ref={battleCanvasRef} width={640} height={360} className="w-full h-full object-contain" style={{ imageRendering: 'pixelated' }} />
+                        {/* ひんし入れ替え選択 */}
+                        {showFaintSwitch && (
+                            <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-20">
+                                <div className="bg-slate-800 border-4 border-red-500 rounded-2xl p-4 max-w-sm w-full mx-4">
+                                    <p className="text-white font-pixel text-center mb-3 text-red-400">つぎの ポケモンを えらべ！</p>
+                                    <div className="space-y-2 max-h-48 overflow-y-auto scrollable">
+                                        {(party || []).filter(p => p.id !== playerPokemon.id && p.currentHp > 0).map(p => (
+                                            <button key={p.id} onClick={() => faintSwitch(p)}
+                                                className="w-full flex items-center gap-2 p-2 rounded-xl bg-blue-700 hover:bg-blue-600 border-2 border-blue-500 text-white font-pixel text-sm">
+                                                <img src={getPokemonImageUrl(p.masterId)} className="w-10 h-10" />
+                                                <div className="flex-1 text-left">
+                                                    <div>{p.name} <span className="text-xs opacity-70">Lv.{p.level}</span></div>
+                                                    <div className="text-xs">HP {p.currentHp}/{p.maxHp}</div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {/* 勝敗オーバーレイ（にげた時は表示しない） */}
-                        {battleOver && (opponentHp <= 0 || playerHp <= 0) && (
+                        {battleOver && (opponentHp <= 0 || playerHp <= 0) && !showFaintSwitch && (
                             <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
                                 <div className="text-3xl font-black text-yellow-400">
                                     {playerHp <= 0 ? '敗北...' : `${opponentPokemon.name}を たおした！`}
@@ -1423,6 +1470,102 @@
         };
 
         // ===== バトル結果画面 =====
+        // ===== 進化演出画面（全画面・カッコいいアニメーション） =====
+        const EvolutionScreen = ({ pokemonName, pokemonId, evolvedName, evolvedId, onComplete }) => {
+            const [phase, setPhase] = useState(0);
+            // 0: おや？ようすが… 1: 光る 2: 変形中 3: 進化完了
+            useEffect(() => {
+                const t1 = setTimeout(() => setPhase(1), 2000);
+                const t2 = setTimeout(() => setPhase(2), 4000);
+                const t3 = setTimeout(() => setPhase(3), 6500);
+                return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+            }, []);
+
+            return (
+                <div className="bg-black rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel overflow-hidden relative" style={{ minHeight: '450px' }}>
+                    {/* 背景パーティクル */}
+                    <div className="absolute inset-0 overflow-hidden">
+                        {phase >= 1 && (
+                            <div className="absolute inset-0" style={{
+                                background: phase >= 2
+                                    ? 'radial-gradient(ellipse at center, rgba(251,191,36,0.3) 0%, rgba(139,92,246,0.2) 40%, transparent 70%)'
+                                    : 'radial-gradient(ellipse at center, rgba(251,191,36,0.15) 0%, transparent 60%)',
+                                animation: 'pulse 1.5s ease-in-out infinite'
+                            }}></div>
+                        )}
+                        {phase >= 1 && Array.from({ length: 20 }).map((_, i) => (
+                            <div key={i} className="absolute rounded-full" style={{
+                                width: `${3 + Math.random() * 6}px`,
+                                height: `${3 + Math.random() * 6}px`,
+                                background: i % 2 === 0 ? '#fbbf24' : '#a78bfa',
+                                left: `${10 + Math.random() * 80}%`,
+                                top: `${10 + Math.random() * 80}%`,
+                                animation: `float ${2 + Math.random() * 3}s ease-in-out infinite`,
+                                animationDelay: `${Math.random() * 2}s`,
+                                opacity: phase >= 2 ? 0.8 : 0.4
+                            }}></div>
+                        ))}
+                    </div>
+
+                    <div className="relative z-10 flex flex-col items-center justify-center p-6" style={{ minHeight: '450px' }}>
+                        {/* フェーズ0-1: 進化前ポケモン */}
+                        {phase < 3 && (
+                            <div className={`transition-all duration-1000 ${phase >= 2 ? 'scale-110 opacity-0' : phase >= 1 ? 'scale-105' : ''}`}
+                                style={phase >= 1 ? { filter: `brightness(${1 + phase * 2}) drop-shadow(0 0 ${10 + phase * 20}px rgba(251,191,36,0.8))` } : {}}>
+                                <img src={getPokemonImageUrl(pokemonId)} className="w-40 h-40 object-contain"
+                                    style={{ imageRendering: 'pixelated' }} />
+                            </div>
+                        )}
+
+                        {/* フェーズ2: 光の球体 */}
+                        {phase === 2 && (
+                            <div className="absolute" style={{
+                                width: '160px', height: '160px',
+                                borderRadius: '50%',
+                                background: 'radial-gradient(circle, #fff 0%, #fbbf24 30%, #a78bfa 60%, transparent 70%)',
+                                animation: 'evolve-glow 2.5s ease-in-out',
+                                boxShadow: '0 0 60px rgba(251,191,36,0.8), 0 0 120px rgba(167,139,250,0.5)'
+                            }}></div>
+                        )}
+
+                        {/* フェーズ3: 進化後ポケモン登場 */}
+                        {phase >= 3 && (
+                            <div className="animate-fadeIn" style={{ filter: 'drop-shadow(0 0 20px rgba(251,191,36,0.6))' }}>
+                                <img src={getPokemonImageUrl(evolvedId)} className="w-48 h-48 object-contain"
+                                    style={{ imageRendering: 'pixelated' }} />
+                            </div>
+                        )}
+
+                        {/* テキスト */}
+                        <div className="mt-6 text-center">
+                            {phase === 0 && (
+                                <p className="text-xl text-yellow-400 animate-pulse">おや...？<br/>{pokemonName}の ようすが...！</p>
+                            )}
+                            {phase === 1 && (
+                                <p className="text-xl text-yellow-300" style={{ textShadow: '0 0 15px rgba(251,191,36,0.8)' }}>...！！</p>
+                            )}
+                            {phase === 2 && (
+                                <p className="text-xl text-white animate-pulse" style={{ textShadow: '0 0 20px rgba(255,255,255,0.8)' }}>しんか しています...</p>
+                            )}
+                            {phase >= 3 && (
+                                <div>
+                                    <p className="text-3xl font-black text-yellow-400 mb-2"
+                                        style={{ textShadow: '0 0 25px rgba(251,191,36,0.8)' }}>
+                                        {evolvedName}に しんかした！
+                                    </p>
+                                    <p className="text-sm text-slate-400 mt-2">おめでとう！</p>
+                                    <button onClick={onComplete}
+                                        className="mt-6 bg-yellow-600 hover:bg-yellow-500 px-8 py-3 rounded-xl font-bold text-lg border-2 border-yellow-400 transition-all">
+                                        OK
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const BattleResultScreen = ({ result, expGained, leveledUp, pokemon, evolvedTo, evolvedToId, nextPokemonName, badgeInfo, trainerAfter, onContinue }) => (
             <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
                 <h2 className={`text-3xl mb-4 ${result === 'win' || result === 'next' ? 'text-yellow-400' : result === 'caught' ? 'text-green-400' : 'text-red-400'}`}>
@@ -1439,18 +1582,10 @@
                         {leveledUp && <p className="text-yellow-400 text-xl mt-2 levelup-glow">レベルアップ！ Lv.{pokemon?.level}</p>}
                     </div>
                 )}
-                {/* 進化演出 */}
+                {/* 進化予告 */}
                 {evolvedTo && evolvedToId && (
-                    <div className="my-6 p-4 bg-gradient-to-b from-yellow-900/40 to-purple-900/40 rounded-2xl border-2 border-yellow-500">
-                        <p className="text-lg text-white mb-2">おや？ {pokemon?.name}の ようすが...！</p>
-                        <div className="flex items-center justify-center gap-4 my-3">
-                            <img src={getPokemonImageUrl(pokemon?.masterId)} className="w-16 h-16 opacity-50" />
-                            <span className="text-3xl text-yellow-400 animate-pulse">→</span>
-                            <img src={getPokemonImageUrl(evolvedToId)} className="w-20 h-20" style={{ filter: 'drop-shadow(0 0 15px rgba(251,191,36,0.8))' }} />
-                        </div>
-                        <p className="text-2xl font-black text-yellow-400 mt-2" style={{ textShadow: '0 0 20px rgba(251,191,36,0.6)' }}>
-                            {evolvedTo}に しんかした！
-                        </p>
+                    <div className="my-4 bg-yellow-900/30 border border-yellow-600 rounded-xl p-3">
+                        <p className="text-lg text-yellow-400 animate-pulse">おや？ {pokemon?.name}の ようすが...！</p>
                     </div>
                 )}
                 {/* トレーナー勝利台詞 */}
@@ -2139,6 +2274,12 @@
             };
 
             const handleBattleResultContinue = () => {
+                // 進化がある場合 → 進化演出画面へ
+                if (battleResult?.evolvedToId && battleResult?.evolvedTo) {
+                    setScreen('evolution');
+                    return;
+                }
+
                 // 次のポケモンがいる場合 → そのまま次のバトルへ
                 if (battleResult?.result === 'next') {
                     setScreen('battle');
@@ -2310,6 +2451,24 @@
 
                 case 'battle_result':
                     return <BattleResultScreen {...battleResult} onContinue={handleBattleResultContinue} />;
+
+                case 'evolution':
+                    if (!battleResult?.evolvedToId || !battleResult?.evolvedTo) { setScreen('world_map'); return null; }
+                    return <EvolutionScreen
+                        pokemonName={battleResult.pokemon?.name}
+                        pokemonId={battleResult.pokemon?.masterId}
+                        evolvedName={battleResult.evolvedTo}
+                        evolvedId={battleResult.evolvedToId}
+                        onComplete={() => {
+                            // 進化フラグクリアして続行
+                            const cleaned = { ...battleResult, evolvedTo: null, evolvedToId: null };
+                            setBattleResult(cleaned);
+                            if (cleaned.result === 'next') {
+                                setScreen('battle');
+                            } else {
+                                handleBattleResultContinue();
+                            }
+                        }} />;
 
                 case 'gym_intro': {
                     const gym = GymLeaders[gymId];
