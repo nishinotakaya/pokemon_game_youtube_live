@@ -577,6 +577,13 @@
                         <canvas ref={canvasRef} width={560} height={440}
                             className="w-full aspect-[14/11] bg-black" style={{ imageRendering: 'pixelated' }} />
 
+                        {/* バッジ表示（右下） */}
+                        <div className="absolute bottom-2 right-2 z-5 flex gap-1 bg-black/60 rounded-lg px-2 py-1">
+                            {Object.entries(GymLeaders).map(([gId, gym]) => (
+                                <span key={gId} className={`text-xs ${badges?.includes(gym.badge) ? 'opacity-100' : 'opacity-20'}`} title={gym.badgeName}>🏅</span>
+                            ))}
+                        </div>
+
                         {/* エンカウントフラッシュ */}
                         {encounterFlash && (
                             <div className="absolute inset-0 encounter-flash bg-white z-10"></div>
