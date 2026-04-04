@@ -282,7 +282,7 @@
         };
 
         // ===== RPGマップ画面（町・ルート統合） =====
-        const RPGMapScreen = ({ mapId, playerPos, setPlayerPos, progress, badges, onEncounter, onTrainerBattle, onGym, onShop, onPokecenter, onMapChange, onInteraction, onOpenParty, interactionMessage }) => {
+        const RPGMapScreen = ({ mapId, playerPos, setPlayerPos, progress, badges, onEncounter, onTrainerBattle, onGym, onShop, onPokecenter, onMapChange, onInteraction, onOpenParty, onReport, interactionMessage }) => {
             const canvasRef = useRef(null);
             const mapData = window.Game.Data.Maps[mapId];
             const MR = window.Game.MapRenderer;
@@ -618,6 +618,10 @@
                                 <button onClick={() => onOpenParty?.()}
                                     className="bg-blue-700 hover:bg-blue-600 active:bg-blue-500 w-16 h-16 rounded-full text-white font-bold text-xs border-2 border-blue-500 shadow-lg select-none">
                                     てもち
+                                </button>
+                                <button onClick={() => onReport?.()}
+                                    className="bg-yellow-700 hover:bg-yellow-600 active:bg-yellow-500 w-12 h-12 rounded-full text-white font-bold text-xs border-2 border-yellow-500 shadow-lg select-none">
+                                    📝
                                 </button>
                             </div>
                         </div>
@@ -2019,10 +2023,11 @@
                         onTrainerBattle={handleTrainerBattle}
                         onGym={(gId) => { setGymId(gId); navigate('gym_intro'); }}
                         onShop={(shopTownId) => { setCurrentTownId(shopTownId || currentTownId); navigate('shop'); }}
-                        onPokecenter={() => navigate('pokecenter')}
+                        onPokecenter={() => { setHealed(false); navigate('pokecenter'); }}
                         onMapChange={handleMapChange}
                         onInteraction={handleMapInteraction}
                         onOpenParty={() => navigate('party')}
+                        onReport={() => navigate('report')}
                         interactionMessage={interactionMessage}
                     />;
                 }
