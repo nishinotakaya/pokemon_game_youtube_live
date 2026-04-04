@@ -805,7 +805,7 @@
         );
 
         // ===== バトル画面（簡易版 - ターン制コマンドバトル） =====
-        const BattleScreen = ({ playerPokemon, opponentPokemon, opponentName, isCatchable, playerItems, battleType, onWin, onLose, onFlee, onCatch }) => {
+        const BattleScreen = ({ playerPokemon, opponentPokemon, opponentName, isCatchable, playerItems, battleType, onWin, onLose, onFlee, onCatch, onUseBall }) => {
             const [playerHp, setPlayerHp] = useState(playerPokemon.currentHp);
             const [opponentHp, setOpponentHp] = useState(opponentPokemon.currentHp || opponentPokemon.maxHp);
             const [logs, setLogs] = useState([`${opponentName || opponentPokemon.name}が あらわれた！`]);
@@ -1219,6 +1219,9 @@
                 setBusy(true);
 
                 addLog(`${Items[ballType]?.name || 'ボール'}を なげた！`);
+
+                // 投げた時点でボール消費
+                if (onUseBall) onUseBall(ballType);
 
                 // ボール飛行アニメーション開始
                 ballAnimRef.current = { active: true, progress: 0, status: 'flying', shakeCount: 0, ballType };
@@ -2043,7 +2046,7 @@
             };
 
             const handleCatch = async (pokemon, ballType, remainingHp) => {
-                await Repo.useItem(playerId, ballType, 1);
+                // ボール消費はtryThrowBall時に実施済み
                 await Repo.addOwnedPokemon(playerId, pokemon);
 
                 const lead = party[0];
@@ -2219,7 +2222,11 @@
                         onWin={handleBattleWin}
                         onLose={handleBattleLose}
                         onFlee={handleBattleFlee}
-                        onCatch={handleCatch} />;
+                        onCatch={handleCatch}
+                        onUseBall={async (ballType) => {
+                            await Repo.useItem(playerId, ballType, 1);
+                            await reloadData(playerId);
+                        }} />;
                 }
 
                 case 'trainer_intro': {
