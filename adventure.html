@@ -805,8 +805,9 @@
         );
 
         // ===== バトル画面（簡易版 - ターン制コマンドバトル） =====
-        const BattleScreen = ({ playerPokemon, opponentPokemon, opponentName, isCatchable, playerItems, battleType, onWin, onLose, onFlee, onCatch, onUseBall }) => {
-            const [playerHp, setPlayerHp] = useState(playerPokemon.currentHp);
+        const BattleScreen = ({ playerPokemon: initialPokemon, opponentPokemon, opponentName, isCatchable, playerItems, battleType, party, onWin, onLose, onFlee, onCatch, onUseBall, onSwitch }) => {
+            const [playerPokemon, setPlayerPokemon] = useState(initialPokemon);
+            const [playerHp, setPlayerHp] = useState(initialPokemon.currentHp);
             const [opponentHp, setOpponentHp] = useState(opponentPokemon.currentHp || opponentPokemon.maxHp);
             const [logs, setLogs] = useState([`${opponentName || opponentPokemon.name}が あらわれた！`]);
             const [turn, setTurn] = useState('player');
@@ -815,6 +816,7 @@
             const [playerBoosts, setPlayerBoosts] = useState({ atkBoost: 1, defBoost: 1, poisoned: false });
             const [opponentBoosts, setOpponentBoosts] = useState({ atkBoost: 1, defBoost: 1, poisoned: false });
             const [showBallSelect, setShowBallSelect] = useState(false);
+            const [showPartySelect, setShowPartySelect] = useState(false);
 
             const pHpPercent = playerPokemon.maxHp > 0 ? (playerHp / playerPokemon.maxHp) * 100 : 0;
             const oHpPercent = opponentPokemon.maxHp > 0 ? (opponentHp / opponentPokemon.maxHp) * 100 : 0;
@@ -1193,6 +1195,42 @@
                 }
             };
 
+            // ポケモン入れ替え（1ターン消費）
+            const switchPokemon = async (newPokemon) => {
+                if (busy || battleOver) return;
+                if (newPokemon.id === playerPokemon.id) return;
+                if (newPokemon.currentHp <= 0) { addLog('ひんしの ポケモンは だせない！'); return; }
+
+                setShowPartySelect(false);
+                setBusy(true);
+
+                // 現在のHPを保存
+                if (onSwitch) onSwitch(playerPokemon.id, playerHp);
+
+                addLog(`${playerPokemon.name} もどれ！`);
+                await new Promise(r => setTimeout(r, 600));
+
+                // 入れ替え
+                setPlayerPokemon(newPokemon);
+                setPlayerHp(newPokemon.currentHp);
+                setPlayerBoosts({ atkBoost: 1, defBoost: 1, poisoned: false });
+
+                // 画像更新
+                const backId = POKEMON_DATA[newPokemon.masterId]?.id || 25;
+                p1ImgRef.current.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${backId}.png`;
+
+                addLog(`ゆけっ！ ${newPokemon.name}！`);
+                await new Promise(r => setTimeout(r, 600));
+
+                // 相手のターン
+                setTurn('opponent');
+                setBusy(false);
+                setTimeout(() => {
+                    const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
+                    doAttackWithAnim(cpuMove, 'opponent');
+                }, 800);
+            };
+
             const tryFlee = () => {
                 if (busy || battleOver) return;
                 if (battleType !== 'wild') {
@@ -1300,7 +1338,30 @@
 
                     {/* Controls */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-t-4 border-slate-700 bg-slate-800">
-                        {showBallSelect ? (
+                        {showPartySelect ? (
+                            <div className="col-span-2 p-3">
+                                <p className="text-white text-sm mb-2 text-yellow-400">だれに かえる？</p>
+                                <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto scrollable">
+                                    {(party || []).filter(p => p.id !== playerPokemon.id).map(p => {
+                                        const hpP = p.maxHp > 0 ? Math.round(p.currentHp / p.maxHp * 100) : 0;
+                                        const isDead = p.currentHp <= 0;
+                                        return (
+                                            <button key={p.id} onClick={() => !isDead && switchPokemon(p)}
+                                                disabled={isDead}
+                                                className={`flex items-center gap-2 p-2 rounded-xl text-sm border-2 font-bold text-left ${isDead ? 'bg-slate-900 border-slate-800 opacity-40' : 'bg-blue-700 hover:bg-blue-600 border-blue-500 text-white'}`}>
+                                                <img src={getPokemonImageUrl(p.masterId)} className="w-10 h-10" />
+                                                <div className="flex-1">
+                                                    <div>{p.name} <span className="text-xs opacity-70">Lv.{p.level}</span></div>
+                                                    <div className="text-xs">HP {p.currentHp}/{p.maxHp} ({hpP}%)</div>
+                                                </div>
+                                                {isDead && <span className="text-xs text-red-400">ひんし</span>}
+                                            </button>
+                                        );
+                                    })}
+                                    <button onClick={() => setShowPartySelect(false)} className="bg-slate-700 text-white p-2 rounded-xl text-sm border border-slate-500">もどる</button>
+                                </div>
+                            </div>
+                        ) : showBallSelect ? (
                             <div className="col-span-2 p-3">
                                 <p className="text-white text-sm mb-2 text-yellow-400">ボールを えらべ！</p>
                                 <div className="grid grid-cols-2 gap-2">
@@ -1338,14 +1399,21 @@
                                             モンスターボール
                                         </button>
                                     )}
+                                    {party && party.length > 1 && (
+                                        <button onClick={() => setShowPartySelect(true)}
+                                            disabled={turn !== 'player' || busy || battleOver}
+                                            className={`p-2 text-xs font-bold rounded-xl border-2 transition-all ${
+                                                turn === 'player' && !busy && !battleOver
+                                                    ? 'bg-green-700 text-white border-green-500 hover:bg-green-600'
+                                                    : 'bg-slate-800 text-slate-600 border-transparent opacity-50'}`}>
+                                            いれかえ
+                                        </button>
+                                    )}
                                     <button onClick={tryFlee}
                                         disabled={busy || battleOver}
                                         className="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-white border-2 border-slate-600 p-2 text-xs font-bold rounded-xl transition-all">
                                         にげる
                                     </button>
-                                    <div className="flex items-center justify-center bg-slate-900/40 rounded-xl border border-slate-700">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{turn === 'player' ? 'Your Turn' : 'CPU...'}</span>
-                                    </div>
                                 </div>
                             </>
                         )}
@@ -2219,6 +2287,7 @@
                         isCatchable={battleType === 'wild'}
                         playerItems={playerItems}
                         battleType={battleType}
+                        party={party}
                         onWin={handleBattleWin}
                         onLose={handleBattleLose}
                         onFlee={handleBattleFlee}
@@ -2226,6 +2295,9 @@
                         onUseBall={async (ballType) => {
                             await Repo.useItem(playerId, ballType, 1);
                             await reloadData(playerId);
+                        }}
+                        onSwitch={async (pokemonId, currentHp) => {
+                            await Repo.updatePokemon(pokemonId, { currentHp: Math.max(0, Math.ceil(currentHp)) });
                         }} />;
                 }
 
