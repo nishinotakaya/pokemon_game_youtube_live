@@ -817,6 +817,17 @@
             const [opponentBoosts, setOpponentBoosts] = useState({ atkBoost: 1, defBoost: 1, poisoned: false });
             const [showBallSelect, setShowBallSelect] = useState(false);
             const [showPartySelect, setShowPartySelect] = useState(false);
+            // バトル中のパーティHP管理
+            const [partyHpMap, setPartyHpMap] = useState(() => {
+                const map = {};
+                (party || []).forEach(p => { map[p.id] = p.currentHp; });
+                return map;
+            });
+
+            // 現在のポケモンのHP変化をpartyHpMapに反映
+            useEffect(() => {
+                setPartyHpMap(prev => ({ ...prev, [playerPokemon.id]: playerHp }));
+            }, [playerHp, playerPokemon.id]);
 
             const pHpPercent = playerPokemon.maxHp > 0 ? (playerHp / playerPokemon.maxHp) * 100 : 0;
             const oHpPercent = opponentPokemon.maxHp > 0 ? (opponentHp / opponentPokemon.maxHp) * 100 : 0;
@@ -1053,8 +1064,9 @@
             const [showFaintSwitch, setShowFaintSwitch] = useState(false);
             const handlePlayerFaint = () => {
                 addLog(`${playerPokemon.name}は たおれた！`);
+                setPartyHpMap(prev => ({ ...prev, [playerPokemon.id]: 0 }));
                 if (onSwitch) onSwitch(playerPokemon.id, 0);
-                const alive = (party || []).filter(p => p.id !== playerPokemon.id && p.currentHp > 0);
+                const alive = (party || []).filter(p => p.id !== playerPokemon.id && (partyHpMap[p.id] ?? p.currentHp) > 0);
                 if (alive.length > 0) {
                     setBusy(false);
                     setShowFaintSwitch(true);
@@ -1068,8 +1080,9 @@
             const faintSwitch = async (newPokemon) => {
                 setShowFaintSwitch(false);
                 setBusy(true);
+                const newHp = partyHpMap[newPokemon.id] ?? newPokemon.currentHp;
                 setPlayerPokemon(newPokemon);
-                setPlayerHp(newPokemon.currentHp);
+                setPlayerHp(newHp);
                 setPlayerBoosts({ atkBoost: 1, defBoost: 1, poisoned: false });
                 const backId = POKEMON_DATA[newPokemon.masterId]?.id || 25;
                 p1ImgRef.current.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${backId}.png`;
@@ -1226,12 +1239,14 @@
             const switchPokemon = async (newPokemon) => {
                 if (busy || battleOver) return;
                 if (newPokemon.id === playerPokemon.id) return;
-                if (newPokemon.currentHp <= 0) { addLog('ひんしの ポケモンは だせない！'); return; }
+                const newHp = partyHpMap[newPokemon.id] ?? newPokemon.currentHp;
+                if (newHp <= 0) { addLog('ひんしの ポケモンは だせない！'); return; }
 
                 setShowPartySelect(false);
                 setBusy(true);
 
-                // 現在のHPを保存
+                // 現在のHPをマップに保存
+                setPartyHpMap(prev => ({ ...prev, [playerPokemon.id]: playerHp }));
                 if (onSwitch) onSwitch(playerPokemon.id, playerHp);
 
                 addLog(`${playerPokemon.name} もどれ！`);
@@ -1239,7 +1254,7 @@
 
                 // 入れ替え
                 setPlayerPokemon(newPokemon);
-                setPlayerHp(newPokemon.currentHp);
+                setPlayerHp(newHp);
                 setPlayerBoosts({ atkBoost: 1, defBoost: 1, poisoned: false });
 
                 // 画像更新
@@ -1352,16 +1367,19 @@
                                 <div className="bg-slate-800 border-4 border-red-500 rounded-2xl p-4 max-w-sm w-full mx-4">
                                     <p className="text-white font-pixel text-center mb-3 text-red-400">つぎの ポケモンを えらべ！</p>
                                     <div className="space-y-2 max-h-48 overflow-y-auto scrollable">
-                                        {(party || []).filter(p => p.id !== playerPokemon.id && p.currentHp > 0).map(p => (
+                                        {(party || []).filter(p => p.id !== playerPokemon.id && (partyHpMap[p.id] ?? p.currentHp) > 0).map(p => {
+                                            const hp = partyHpMap[p.id] ?? p.currentHp;
+                                            return (
                                             <button key={p.id} onClick={() => faintSwitch(p)}
                                                 className="w-full flex items-center gap-2 p-2 rounded-xl bg-blue-700 hover:bg-blue-600 border-2 border-blue-500 text-white font-pixel text-sm">
                                                 <img src={getPokemonImageUrl(p.masterId)} className="w-10 h-10" />
                                                 <div className="flex-1 text-left">
                                                     <div>{p.name} <span className="text-xs opacity-70">Lv.{p.level}</span></div>
-                                                    <div className="text-xs">HP {p.currentHp}/{p.maxHp}</div>
+                                                    <div className="text-xs">HP {hp}/{p.maxHp}</div>
                                                 </div>
                                             </button>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
@@ -1390,8 +1408,9 @@
                                 <p className="text-white text-sm mb-2 text-yellow-400">だれに かえる？</p>
                                 <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto scrollable">
                                     {(party || []).filter(p => p.id !== playerPokemon.id).map(p => {
-                                        const hpP = p.maxHp > 0 ? Math.round(p.currentHp / p.maxHp * 100) : 0;
-                                        const isDead = p.currentHp <= 0;
+                                        const hp = partyHpMap[p.id] ?? p.currentHp;
+                                        const hpP = p.maxHp > 0 ? Math.round(hp / p.maxHp * 100) : 0;
+                                        const isDead = hp <= 0;
                                         return (
                                             <button key={p.id} onClick={() => !isDead && switchPokemon(p)}
                                                 disabled={isDead}
@@ -1399,7 +1418,7 @@
                                                 <img src={getPokemonImageUrl(p.masterId)} className="w-10 h-10" />
                                                 <div className="flex-1">
                                                     <div>{p.name} <span className="text-xs opacity-70">Lv.{p.level}</span></div>
-                                                    <div className="text-xs">HP {p.currentHp}/{p.maxHp} ({hpP}%)</div>
+                                                    <div className="text-xs">HP {hp}/{p.maxHp} ({hpP}%)</div>
                                                 </div>
                                                 {isDead && <span className="text-xs text-red-400">ひんし</span>}
                                             </button>
