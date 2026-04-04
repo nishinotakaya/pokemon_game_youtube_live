@@ -14,11 +14,11 @@ window.Game.Catching = {
     calcCatchRate(pokemon, ballType) {
         const ballMod = this.BALL_MODIFIERS[ballType] || 1.0;
         const hpRatio = pokemon.currentHp / pokemon.maxHp;
-        // HP低いほど捕まりやすい + ボール補正
-        const baseRate = (1 - hpRatio) * 0.6 + 0.1;
+        // HP低いほど捕まりやすい（ベースを大幅UP）
+        const baseRate = (1 - hpRatio) * 0.5 + 0.35;
         const rate = Math.min(0.95, baseRate * ballMod);
-        // レベルが高いほど捕まりにくい
-        const levelPenalty = Math.max(0.3, 1 - (pokemon.level / 150));
+        // レベル補正を緩く
+        const levelPenalty = Math.max(0.5, 1 - (pokemon.level / 200));
         return rate * levelPenalty;
     },
 
