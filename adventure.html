@@ -425,59 +425,12 @@
                 }
             };
 
-            // タッチ→目的地まで自動歩行
-            const touchStartRef = useRef(null);
-            const autoWalkRef = useRef(null); // { path: [{x,y}], index: 0 }
-
-            // 簡易BFSパスファインディング
-            const findPath = useCallback((sx, sy, gx, gy) => {
-                if (sx === gx && sy === gy) return [];
-                if (!mapData) return null;
-                const w = mapData.width, h = mapData.height;
-                const visited = new Set();
-                const queue = [{ x: sx, y: sy, path: [] }];
-                visited.add(`${sx},${sy}`);
-                const dirs = [[0,1,0],[0,-1,3],[-1,0,1],[1,0,2]]; // dx,dy,dir
-
-                while (queue.length > 0) {
-                    const cur = queue.shift();
-                    for (const [dx, dy, dir] of dirs) {
-                        const nx = cur.x + dx, ny = cur.y + dy;
-                        const key = `${nx},${ny}`;
-                        if (visited.has(key)) continue;
-                        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
-                        visited.add(key);
-                        const newPath = [...cur.path, { dx, dy, dir }];
-                        if (nx === gx && ny === gy) return newPath;
-                        if (canWalk(nx, ny)) {
-                            queue.push({ x: nx, y: ny, path: newPath });
-                        }
-                    }
-                    if (queue.length > 2000) return null; // 探索上限
-                }
-                return null;
-            }, [mapData, canWalk]);
-
-            // 自動歩行ループ
-            useEffect(() => {
-                if (!autoWalkRef.current) return;
-                const walk = autoWalkRef.current;
-                if (walk.index >= walk.path.length) {
-                    autoWalkRef.current = null;
-                    return;
-                }
-                const step = walk.path[walk.index];
-                const timer = setTimeout(() => {
-                    tryMove(step.dx, step.dy, step.dir);
-                    walk.index++;
-                    // 再レンダーをトリガー
-                    autoWalkRef.current = { ...walk };
-                }, 160);
-                return () => clearTimeout(timer);
-            }, [playerPos, autoWalkRef.current?.index]);
+            // タッチ操作: 長押しで押してる場所に向かって素早く連続移動、タップではなす
+            const touchRef = useRef({ active: false, tileX: 0, tileY: 0, startTime: 0, startX: 0, startY: 0 });
+            const walkTimerRef = useRef(null);
 
             // タッチ座標→マップタイル座標変換
-            const touchToTile = useCallback((touchX, touchY) => {
+            const touchToTile = (touchX, touchY) => {
                 const canvas = canvasRef.current;
                 if (!canvas) return null;
                 const rect = canvas.getBoundingClientRect();
@@ -492,63 +445,97 @@
                     x: Math.floor((canvasX + camX) / ts),
                     y: Math.floor((canvasY + camY) / ts)
                 };
-            }, [playerPos]);
+            };
 
-            const handleTouchStart = useCallback((e) => {
-                e.preventDefault();
-                autoWalkRef.current = null; // 歩行中に触れたら停止
-                const touch = e.touches[0];
-                touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
-            }, []);
-
-            const handleTouchEnd = useCallback((e) => {
-                e.preventDefault();
-                if (!touchStartRef.current) return;
-                const touch = e.changedTouches[0];
-                const dx = touch.clientX - touchStartRef.current.x;
-                const dy = touch.clientY - touchStartRef.current.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const elapsed = Date.now() - touchStartRef.current.time;
-
-                if (dist < 15 && elapsed < 300) {
-                    // 短タップ = はなす
-                    tryInteract();
-                } else if (dist < 15 && elapsed >= 300) {
-                    // 長押し = タッチ位置まで自動歩行
-                    const tile = touchToTile(touch.clientX, touch.clientY);
-                    if (tile) {
-                        const path = findPath(playerPos.x, playerPos.y, tile.x, tile.y);
-                        if (path && path.length > 0) {
-                            autoWalkRef.current = { path, index: 0 };
-                        }
-                    }
-                } else if (dist >= 15) {
-                    // スワイプ = 1歩移動
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        dx > 0 ? tryMove(1, 0, 2) : tryMove(-1, 0, 1);
-                    } else {
-                        dy > 0 ? tryMove(0, 1, 0) : tryMove(0, -1, 3);
-                    }
+            // 目標タイルに向かって1歩進む
+            const stepToward = useCallback((goalX, goalY) => {
+                const dx = goalX - playerPos.x;
+                const dy = goalY - playerPos.y;
+                if (dx === 0 && dy === 0) return false;
+                // 距離が大きい軸を優先
+                if (Math.abs(dx) >= Math.abs(dy)) {
+                    if (dx > 0) { tryMove(1, 0, 2); return true; }
+                    else { tryMove(-1, 0, 1); return true; }
+                } else {
+                    if (dy > 0) { tryMove(0, 1, 0); return true; }
+                    else { tryMove(0, -1, 3); return true; }
                 }
-                touchStartRef.current = null;
-            }, [tryMove, tryInteract, touchToTile, findPath, playerPos]);
+            }, [playerPos, tryMove]);
 
-            const handleTouchMove = useCallback((e) => {
-                e.preventDefault();
-            }, []);
+            // 長押し中の連続移動ループ
+            useEffect(() => {
+                if (walkTimerRef.current) { clearInterval(walkTimerRef.current); walkTimerRef.current = null; }
+                if (!touchRef.current.active) return;
+
+                const tick = () => {
+                    if (!touchRef.current.active) return;
+                    stepToward(touchRef.current.tileX, touchRef.current.tileY);
+                };
+                tick(); // 即座に1歩
+                walkTimerRef.current = setInterval(tick, 120);
+                return () => { if (walkTimerRef.current) { clearInterval(walkTimerRef.current); walkTimerRef.current = null; } };
+            }, [touchRef.current.active, touchRef.current.tileX, touchRef.current.tileY, stepToward]);
 
             useEffect(() => {
                 const canvas = canvasRef.current;
                 if (!canvas) return;
-                canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-                canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-                canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-                return () => {
-                    canvas.removeEventListener('touchstart', handleTouchStart);
-                    canvas.removeEventListener('touchend', handleTouchEnd);
-                    canvas.removeEventListener('touchmove', handleTouchMove);
+
+                const onStart = (e) => {
+                    e.preventDefault();
+                    const t = e.touches[0];
+                    touchRef.current = { active: false, tileX: 0, tileY: 0, startTime: Date.now(), startX: t.clientX, startY: t.clientY };
+                    // 300ms後にまだ押してたら長押し開始
+                    touchRef.current._holdTimer = setTimeout(() => {
+                        const tile = touchToTile(t.clientX, t.clientY);
+                        if (tile) {
+                            touchRef.current.active = true;
+                            touchRef.current.tileX = tile.x;
+                            touchRef.current.tileY = tile.y;
+                            // stateトリガー用に強制更新
+                            setAnimFrame(f => f + 0.001);
+                        }
+                    }, 250);
                 };
-            }, [handleTouchStart, handleTouchEnd, handleTouchMove]);
+
+                const onMove = (e) => {
+                    e.preventDefault();
+                    if (!touchRef.current.active) return;
+                    // 押してる場所が変わったら目的地更新
+                    const t = e.touches[0];
+                    const tile = touchToTile(t.clientX, t.clientY);
+                    if (tile && (tile.x !== touchRef.current.tileX || tile.y !== touchRef.current.tileY)) {
+                        touchRef.current.tileX = tile.x;
+                        touchRef.current.tileY = tile.y;
+                    }
+                };
+
+                const onEnd = (e) => {
+                    e.preventDefault();
+                    if (touchRef.current._holdTimer) clearTimeout(touchRef.current._holdTimer);
+                    const wasActive = touchRef.current.active;
+                    touchRef.current.active = false;
+                    if (walkTimerRef.current) { clearInterval(walkTimerRef.current); walkTimerRef.current = null; }
+
+                    if (!wasActive) {
+                        // 長押しでなかった → タップ = はなす
+                        const elapsed = Date.now() - touchRef.current.startTime;
+                        if (elapsed < 300) {
+                            tryInteract();
+                        }
+                    }
+                };
+
+                canvas.addEventListener('touchstart', onStart, { passive: false });
+                canvas.addEventListener('touchmove', onMove, { passive: false });
+                canvas.addEventListener('touchend', onEnd, { passive: false });
+                canvas.addEventListener('touchcancel', onEnd, { passive: false });
+                return () => {
+                    canvas.removeEventListener('touchstart', onStart);
+                    canvas.removeEventListener('touchmove', onMove);
+                    canvas.removeEventListener('touchend', onEnd);
+                    canvas.removeEventListener('touchcancel', onEnd);
+                };
+            }, [tryMove, tryInteract, playerPos]);
 
             // キーボード入力
             useEffect(() => {
@@ -638,7 +625,7 @@
                             ← → ↑ ↓ いどう / スペース はなす / P てもち
                         </div>
                         <div className="text-xs text-slate-500 text-center mt-2 md:hidden">
-                            スワイプ: 1歩 / 長押し: そこまで歩く / タップ: はなす
+                            長押し: そこまで移動 / タップ: はなす
                         </div>
                     </div>
                 </div>
