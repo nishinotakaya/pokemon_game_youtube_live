@@ -182,7 +182,7 @@
         };
 
         // ===== ワールドマップ =====
-        const WorldMap = ({ progress, badges, onSelectTown, onOpenParty, onOpenBag }) => {
+        const WorldMap = ({ progress, badges, onSelectTown, onOpenParty, onOpenBag, onReport }) => {
             const allBadgeIds = Object.values(GymLeaders).map(g => g.badge);
             const hasAllBadges = allBadgeIds.every(b => badges.includes(b));
 
@@ -193,6 +193,7 @@
                         <div className="flex gap-2">
                             <button onClick={onOpenParty} className="bg-blue-700 hover:bg-blue-600 px-3 py-1 rounded-lg text-sm border border-blue-500">てもち</button>
                             <button onClick={onOpenBag} className="bg-green-700 hover:bg-green-600 px-3 py-1 rounded-lg text-sm border border-green-500">バッグ</button>
+                            <button onClick={onReport} className="bg-yellow-700 hover:bg-yellow-600 px-3 py-1 rounded-lg text-sm border border-yellow-500">レポート</button>
                         </div>
                     </div>
                     {/* 進行ガイド */}
@@ -966,7 +967,7 @@
                         if (newHp <= 0) {
                             addLog(`${opponentPokemon.name}は たおれた！`);
                             setBattleOver(true); setBusy(false);
-                            setTimeout(() => onWin(opponentPokemon), 1500);
+                            setTimeout(() => onWin(opponentPokemon, playerHp), 1500);
                             return;
                         }
                     } else {
@@ -1063,7 +1064,7 @@
                 setBusy(false);
                 setTimeout(() => {
                     ballAnimRef.current.active = false;
-                    onCatch(opponentPokemon, ballType);
+                    onCatch(opponentPokemon, ballType, playerHp);
                 }, 1500);
             };
 
@@ -1295,6 +1296,69 @@
             </div>
         );
 
+        // ===== レポート画面 =====
+        const ReportScreen = ({ playerName, party, badges, currentTown, onSave, onCancel }) => {
+            const [phase, setPhase] = useState(0); // 0: 確認, 1: 書き込み中, 2: 完了
+
+            const handleSave = async () => {
+                setPhase(1);
+                await onSave();
+                await new Promise(r => setTimeout(r, 1500));
+                setPhase(2);
+            };
+
+            const townName = Towns[currentTown]?.name || 'マサラタウン';
+
+            return (
+                <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6">
+                    {phase === 0 && (
+                        <div className="text-center">
+                            <h2 className="text-2xl text-yellow-400 mb-6">レポート</h2>
+                            <div className="bg-slate-900 rounded-xl p-5 mb-6 border border-slate-600 text-left">
+                                <p className="text-slate-300 mb-3 text-lg">ここまでの ぼうけんを<br/>レポートに きろくしますか？</p>
+                                <div className="text-sm text-slate-400 space-y-1 mt-4 border-t border-slate-700 pt-3">
+                                    <p>トレーナー: <span className="text-white">{playerName || 'プレイヤー'}</span></p>
+                                    <p>バッジ: <span className="text-yellow-400">{badges.length}こ</span></p>
+                                    <p>てもち: <span className="text-blue-400">{party.length}びき</span></p>
+                                    <p>ばしょ: <span className="text-green-400">{townName}</span></p>
+                                </div>
+                            </div>
+                            <div className="flex gap-4 justify-center">
+                                <button onClick={handleSave}
+                                    className="bg-yellow-600 hover:bg-yellow-500 px-8 py-3 rounded-xl font-bold text-lg border-2 border-yellow-400 hover:border-white transition-all">
+                                    はい
+                                </button>
+                                <button onClick={onCancel}
+                                    className="bg-slate-600 hover:bg-slate-500 px-8 py-3 rounded-xl font-bold border border-slate-500">
+                                    いいえ
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {phase === 1 && (
+                        <div className="text-center py-8">
+                            <div className="text-6xl mb-6 animate-pulse">📝</div>
+                            <p className="text-xl text-yellow-400 animate-pulse">レポートに かきこんでいます...</p>
+                            <p className="text-sm text-slate-400 mt-2">でんげんを きらないでください</p>
+                        </div>
+                    )}
+
+                    {phase === 2 && (
+                        <div className="text-center py-8">
+                            <div className="text-6xl mb-6">✅</div>
+                            <p className="text-xl text-green-400 mb-2">{playerName || 'プレイヤー'}は</p>
+                            <p className="text-xl text-green-400 mb-6">レポートに かきのこした！</p>
+                            <button onClick={onCancel}
+                                className="bg-yellow-600 hover:bg-yellow-500 px-8 py-3 rounded-xl font-bold text-lg border-2 border-yellow-400 hover:border-white transition-all">
+                                おわる
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
         // ===== エンディング =====
         const EndingScreen = ({ onTitle }) => (
             <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-8 text-center">
@@ -1411,6 +1475,38 @@
                 navigate('rpg_map');
             };
 
+            const handleReport = async () => {
+                if (!playerId) return;
+                // 現在のタウンを保存
+                await Repo.updateProgress(playerId, { currentTown: currentTownId || 'masara_town' });
+                // ポケモンのHPを保存（現在のパーティ状態）
+                for (const p of party) {
+                    await Repo.updatePokemon(p.id, {
+                        currentHp: p.currentHp,
+                        level: p.level,
+                        exp: p.exp,
+                        maxHp: p.maxHp,
+                        attack: p.attack,
+                        defense: p.defense,
+                        speed: p.speed
+                    });
+                }
+            };
+
+            const handleReportDone = () => {
+                // タイトルに戻る
+                setScreen('title');
+                setPlayerId(null);
+                setParty([]);
+                setAllPokemons([]);
+                setPlayerItems([]);
+                setProgress(null);
+                setBadges([]);
+                setCurrentTownId(null);
+                setCurrentRouteId(null);
+                setCurrentMapId(null);
+            };
+
             const handleSelectTown = (townId) => {
                 setCurrentTownId(townId);
                 setHealed(false);
@@ -1508,9 +1604,10 @@
                 navigate('battle');
             };
 
-            const handleBattleWin = async (defeated) => {
+            const handleBattleWin = async (defeated, remainingHp) => {
                 const lead = party[0];
                 if (!lead) return;
+                const battleHp = remainingHp != null ? Math.max(1, Math.ceil(remainingHp)) : lead.currentHp;
 
                 // EXP計算
                 const isGym = battleType === 'gym';
@@ -1536,29 +1633,31 @@
                             attack: newStats.attack,
                             defense: newStats.defense,
                             speed: newStats.speed,
-                            currentHp: newStats.maxHp,
+                            currentHp: Math.min(battleHp, newStats.maxHp),
                             moves: JSON.stringify(evolvedData.moves)
                         });
                     } else {
+                        const newMaxHp = updated.maxHp || lead.maxHp;
                         await Repo.updatePokemon(lead.id, {
                             level: updated.level,
                             exp: updated.exp,
-                            maxHp: updated.maxHp || lead.maxHp,
+                            maxHp: newMaxHp,
                             attack: updated.attack || lead.attack,
                             defense: updated.defense || lead.defense,
                             speed: updated.speed || lead.speed,
-                            currentHp: Math.min(lead.currentHp || lead.maxHp, updated.maxHp || lead.maxHp)
+                            currentHp: Math.min(battleHp, newMaxHp)
                         });
                     }
                 } else {
+                    const newMaxHp = updated.maxHp || lead.maxHp;
                     await Repo.updatePokemon(lead.id, {
                         level: updated.level,
                         exp: updated.exp,
-                        maxHp: updated.maxHp || lead.maxHp,
+                        maxHp: newMaxHp,
                         attack: updated.attack || lead.attack,
                         defense: updated.defense || lead.defense,
                         speed: updated.speed || lead.speed,
-                        currentHp: Math.min(lead.currentHp || lead.maxHp, updated.maxHp || lead.maxHp)
+                        currentHp: Math.min(battleHp, newMaxHp)
                     });
                 }
 
@@ -1608,6 +1707,11 @@
             };
 
             const handleBattleLose = async () => {
+                // 負けたらHP1で保存（ポケセンで回復する必要がある）
+                const lead = party[0];
+                if (lead) {
+                    await Repo.updatePokemon(lead.id, { currentHp: 1 });
+                }
                 await reloadData(playerId);
                 setBattleResult({ result: 'lose', expGained: 0 });
                 setScreen('battle_result');
@@ -1617,18 +1721,21 @@
                 goBack();
             };
 
-            const handleCatch = async (pokemon, ballType) => {
+            const handleCatch = async (pokemon, ballType, remainingHp) => {
                 await Repo.useItem(playerId, ballType, 1);
                 await Repo.addOwnedPokemon(playerId, pokemon);
 
                 const lead = party[0];
                 if (lead) {
+                    const battleHp = remainingHp != null ? Math.max(1, Math.ceil(remainingHp)) : lead.currentHp;
                     const expGained = Leveling.calcBattleExp(pokemon.level, false, false);
                     const updated = Leveling.addExp(lead, expGained);
+                    const newMaxHp = updated.maxHp || lead.maxHp;
                     await Repo.updatePokemon(lead.id, {
                         level: updated.level, exp: updated.exp,
-                        maxHp: updated.maxHp || lead.maxHp, attack: updated.attack || lead.attack,
-                        defense: updated.defense || lead.defense, speed: updated.speed || lead.speed
+                        maxHp: newMaxHp, attack: updated.attack || lead.attack,
+                        defense: updated.defense || lead.defense, speed: updated.speed || lead.speed,
+                        currentHp: Math.min(battleHp, newMaxHp)
                     });
                     await reloadData(playerId);
                     setBattleResult({ result: 'caught', expGained, leveledUp: updated.leveledUp, pokemon: { ...lead, level: updated.level } });
@@ -1695,7 +1802,8 @@
                     return <WorldMap progress={progress} badges={badges}
                         onSelectTown={handleSelectTown}
                         onOpenParty={() => navigate('party')}
-                        onOpenBag={() => navigate('bag')} />;
+                        onOpenBag={() => navigate('bag')}
+                        onReport={() => navigate('report')} />;
 
                 case 'rpg_map': {
                     const mapDat = window.Game.Data.Maps[currentMapId];
@@ -1802,6 +1910,15 @@
 
                 case 'bag':
                     return <BagScreen items={playerItems} onBack={goBack} />;
+
+                case 'report':
+                    return <ReportScreen
+                        playerName={playerName}
+                        party={party}
+                        badges={badges}
+                        currentTown={currentTownId}
+                        onSave={handleReport}
+                        onCancel={handleReportDone} />;
 
                 case 'ending':
                     return <EndingScreen onTitle={() => setScreen('title')} />;
