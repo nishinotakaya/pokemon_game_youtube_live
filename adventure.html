@@ -677,11 +677,26 @@
         };
 
         // ===== ポケモンパーティ画面 =====
-        const PartyScreen = ({ party, allPokemons, onBack, onSwap }) => (
+        const PartyScreen = ({ party, allPokemons, badges, onBack, onSwap }) => (
             <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 max-h-[90vh] overflow-hidden flex flex-col">
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h2 className="text-2xl text-yellow-400">てもちポケモン</h2>
                     <button onClick={onBack} className="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded-xl text-sm border border-slate-500">もどる</button>
+                </div>
+                {/* バッジ一覧 */}
+                <div className="bg-slate-900 rounded-xl p-3 mb-3 flex-shrink-0 border border-slate-700">
+                    <div className="text-xs text-yellow-400 mb-2">バッジ ({badges?.length || 0}/5)</div>
+                    <div className="flex flex-wrap gap-2">
+                        {Object.entries(GymLeaders).map(([gId, gym]) => {
+                            const has = badges?.includes(gym.badge);
+                            return (
+                                <div key={gId} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs border ${has ? 'bg-yellow-900/50 border-yellow-600' : 'bg-slate-800 border-slate-700 opacity-30'}`}>
+                                    <span>🏅</span>
+                                    <span>{gym.badgeName}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
                 <div className="space-y-2 overflow-y-auto flex-1 scrollable">
                     {allPokemons.map(pokemon => {
@@ -1756,6 +1771,25 @@
             };
 
             const handleMapChange = (newMapId, entryPos) => {
+                // 町のバッジ解放チェック
+                const town = Towns[newMapId];
+                if (town && town.unlockedBy) {
+                    if (town.unlockedBy === 'all_badges') {
+                        const allBadgeIds = Object.values(GymLeaders).map(g => g.badge);
+                        if (!allBadgeIds.every(b => badges.includes(b))) {
+                            setInteractionMessage('このさきは まだ いけないようだ...\nすべてのバッジが ひつようだ！');
+                            setTimeout(() => setInteractionMessage(null), 3000);
+                            return;
+                        }
+                    } else if (!badges.includes(town.unlockedBy)) {
+                        const requiredGym = Object.values(GymLeaders).find(g => g.badge === town.unlockedBy);
+                        const badgeName = requiredGym?.badgeName || 'バッジ';
+                        setInteractionMessage(`このさきは まだ いけないようだ...\n${badgeName}が ひつようだ！`);
+                        setTimeout(() => setInteractionMessage(null), 3000);
+                        return;
+                    }
+                }
+
                 const map = window.Game.Data.Maps[newMapId];
                 const pos = entryPos || map?.playerStart || { x: 7, y: 10 };
                 setCurrentMapId(newMapId);
@@ -2211,7 +2245,7 @@
                     return <PokecenterScreen onHeal={handleHeal} onBack={() => setScreen(currentMapId ? 'rpg_map' : 'town')} healed={healed} />;
 
                 case 'party':
-                    return <PartyScreen party={party} allPokemons={allPokemons} onBack={goBack} onSwap={handleSwapParty} />;
+                    return <PartyScreen party={party} allPokemons={allPokemons} badges={badges} onBack={goBack} onSwap={handleSwapParty} />;
 
                 case 'bag':
                     return <BagScreen items={playerItems} onBack={goBack} />;
