@@ -2623,18 +2623,16 @@
                 }
 
                 case 'battle': {
-                    // 連戦時は勝ったポケモンで続行、なければparty[0]
-                    let lead = party[0];
+                    // 連戦時は勝ったポケモンで続行
+                    let lead = null;
                     if (battleActivePokemonId) {
-                        const active = party.find(p => p.id === battleActivePokemonId && p.currentHp > 0);
-                        if (active) lead = active;
+                        lead = party.find(p => p.id === battleActivePokemonId && p.currentHp > 0);
                     }
-                    // party[0]がひんしなら生きてるポケモンを探す
-                    if (lead && lead.currentHp <= 0) {
-                        const alive = party.find(p => p.currentHp > 0);
-                        if (alive) lead = alive;
-                    }
-                    if (!lead || lead.currentHp <= 0 || !battleOpponent) return null;
+                    // なければ生きてるポケモンを探す
+                    if (!lead) lead = party.find(p => p.currentHp > 0);
+                    // それでもいなければparty[0]
+                    if (!lead) lead = party[0];
+                    if (!lead || !battleOpponent) return null;
                     return <BattleScreen
                         playerPokemon={lead}
                         opponentPokemon={battleOpponent}
