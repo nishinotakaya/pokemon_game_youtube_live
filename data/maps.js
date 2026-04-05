@@ -91,18 +91,22 @@ window.Game.Data.Maps = {
             5, 0, 0, 3, 3, 3, 0, 0, 0, 0, 3, 3, 3, 0, 0, 0, 0, 5,
             5, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 5,
             5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
-            5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5,
-            2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2,
+            5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5,
+            2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2,
         ],
         // 上(y=0)=1番道路に戻る、下(y=15)=2番道路に進む
         exits: [
             { x: 8, y: 0, to: 'route_1', entryX: 7, entryY: 18 },
             { x: 9, y: 0, to: 'route_1', entryX: 7, entryY: 18 },
             { x: 10, y: 0, to: 'route_1', entryX: 7, entryY: 18 },
+            // 下左=2番道路
+            { x: 6, y: 15, to: 'route_2', entryX: 7, entryY: 1 },
+            { x: 7, y: 15, to: 'route_2', entryX: 7, entryY: 1 },
             { x: 8, y: 15, to: 'route_2', entryX: 7, entryY: 1 },
-            { x: 9, y: 15, to: 'route_2', entryX: 7, entryY: 1 },
-            { x: 10, y: 15, to: 'route_2', entryX: 7, entryY: 1 },
-            // 右=チャンピオンロードへ
+            // 下右=チャンピオンロード
+            { x: 9, y: 15, to: 'champion_road', entryX: 9, entryY: 1 },
+            { x: 10, y: 15, to: 'champion_road', entryX: 9, entryY: 1 },
+            // 右=チャンピオンロード
             { x: 17, y: 8, to: 'champion_road', entryX: 1, entryY: 10 },
             { x: 17, y: 9, to: 'champion_road', entryX: 1, entryY: 10 },
         ],
@@ -110,8 +114,8 @@ window.Game.Data.Maps = {
             { x: 3, y: 4, type: 'pokecenter', label: 'ポケモンセンター' },
             { x: 12, y: 4, type: 'shop', action: 'tokiwa_city', label: 'フレンドリィショップ' },
             { x: 7, y: 7, type: 'gym', action: 'tokiwa_gym', label: 'トキワジム（サカキ）' },
-            { x: 7, y: 1, type: 'sign', action: 'sign', message: 'トキワシティ\n↑ 1ばんどうろ（マサラ方面）\n↓ 2ばんどうろ（ニビ方面）\n→ チャンピオンロード' },
-            { x: 12, y: 8, type: 'sign', action: 'sign', message: '→ チャンピオンロード\nバッジが ぜんぶ ないと はいれない！' },
+            { x: 7, y: 1, type: 'sign', action: 'sign', message: 'トキワシティ\n↑ 1ばんどうろ（マサラ方面）\n↓← 2ばんどうろ  ↓→ チャンピオンロード' },
+            { x: 9, y: 13, type: 'sign', action: 'sign', message: '← ニビシティ方面\n→ チャンピオンロード（ポケモンリーグ）' },
         ]
     },
 
