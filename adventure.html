@@ -340,6 +340,17 @@
                     }
                 }
 
+                // アイテム自動ピックアップ（上に乗ったら拾う）
+                if (mapData.interactions) {
+                    const itemHere = mapData.interactions.find(i => i.x === newX && i.y === newY && i.type === 'item');
+                    if (itemHere) {
+                        const pickedKey = `picked_${mapId}_${itemHere.x}_${itemHere.y}`;
+                        if (!progress?.flags?.[pickedKey]) {
+                            handleInteraction(itemHere);
+                        }
+                    }
+                }
+
                 // 草むらエンカウントチェック
                 if (tile === 1 && mapData.encounters) {
                     const routeData = Routes[mapData.encounters];
