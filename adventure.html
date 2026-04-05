@@ -2200,6 +2200,7 @@
             };
 
             const handleEncounter = (wildPokemon) => {
+                setBattleActivePokemonId(null);
                 setBattleOpponent(wildPokemon);
                 setBattleType('wild');
                 setBattleTrainerId(null);
@@ -2616,17 +2617,13 @@
                     if (battleActivePokemonId) {
                         const active = party.find(p => p.id === battleActivePokemonId && p.currentHp > 0);
                         if (active) lead = active;
-                        setBattleActivePokemonId(null);
                     }
                     // party[0]がひんしなら生きてるポケモンを探す
                     if (lead && lead.currentHp <= 0) {
                         const alive = party.find(p => p.currentHp > 0);
                         if (alive) lead = alive;
                     }
-                    if (!lead || lead.currentHp <= 0 || !battleOpponent) {
-                        setScreen('world_map');
-                        return null;
-                    }
+                    if (!lead || lead.currentHp <= 0 || !battleOpponent) return null;
                     return <BattleScreen
                         playerPokemon={lead}
                         opponentPokemon={battleOpponent}
