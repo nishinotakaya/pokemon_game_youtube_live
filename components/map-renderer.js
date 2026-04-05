@@ -526,7 +526,7 @@ window.Game.MapRenderer = {
     },
 
     // マップ全体描画
-    render(ctx, canvas, mapData, px, py, pDir, aFrame, interactions, defeatedTrainers) {
+    render(ctx, canvas, mapData, px, py, pDir, aFrame, interactions, defeatedTrainers, flags, mapId) {
         const ts = this.TILE_SIZE;
         const w = canvas.width, h = canvas.height;
         const t = Date.now();
@@ -562,6 +562,37 @@ window.Game.MapRenderer = {
                     const scrY = inter.y * ts - camY;
                     if (scrX > -ts && scrX < w + ts && scrY > -ts && scrY < h + ts) {
                         this.drawNPC(ctx, scrX, scrY, ts, inter.type === 'npc' ? inter.action : 'trainer', t, inter.action);
+                    }
+                }
+            }
+        }
+
+        // アイテム描画（モンスターボール風アイコン）
+        if (interactions) {
+            for (const inter of interactions) {
+                if (inter.type === 'item') {
+                    const pickedKey = `picked_${mapId}_${inter.x}_${inter.y}`;
+                    if (flags?.[pickedKey]) continue;
+                    const scrX = inter.x * ts - camX;
+                    const scrY = inter.y * ts - camY;
+                    if (scrX > -ts && scrX < w + ts && scrY > -ts && scrY < h + ts) {
+                        const cx = scrX + ts / 2;
+                        const cy = scrY + ts / 2 + Math.sin(t / 400) * 3;
+                        // ボール型アイコン
+                        ctx.fillStyle = '#ef4444';
+                        ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI, false); ctx.fill();
+                        ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
+                        ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy); ctx.stroke();
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
+                        ctx.stroke();
+                        // 光るエフェクト
+                        ctx.shadowBlur = 8; ctx.shadowColor = '#fbbf24';
+                        ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.stroke();
+                        ctx.shadowBlur = 0;
                     }
                 }
             }

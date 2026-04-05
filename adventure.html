@@ -282,7 +282,7 @@
         };
 
         // ===== RPGマップ画面（町・ルート統合） =====
-        const RPGMapScreen = ({ mapId, playerPos, setPlayerPos, progress, badges, onEncounter, onTrainerBattle, onGym, onShop, onPokecenter, onMapChange, onInteraction, onOpenParty, onReport, interactionMessage }) => {
+        const RPGMapScreen = ({ mapId, playerPos, setPlayerPos, progress, badges, onEncounter, onTrainerBattle, onGym, onShop, onPokecenter, onMapChange, onInteraction, onOpenParty, onReport, onPickupItem, interactionMessage }) => {
             const canvasRef = useRef(null);
             const mapData = window.Game.Data.Maps[mapId];
             const MR = window.Game.MapRenderer;
@@ -415,6 +415,19 @@
                     case 'gym':
                         onGym?.(inter.action);
                         break;
+                    case 'item': {
+                        const pickedKey = `picked_${mapId}_${inter.x}_${inter.y}`;
+                        if (progress?.flags?.[pickedKey]) {
+                            setDialogText('もう なにも ない');
+                            break;
+                        }
+                        const itemData = Items[inter.action];
+                        if (itemData) {
+                            setDialogText(`${itemData.icon} ${itemData.name}を みつけた！`);
+                            onPickupItem?.(inter.action, inter);
+                        }
+                        break;
+                    }
                 }
             };
 
@@ -554,7 +567,7 @@
                 let frameId;
 
                 const render = () => {
-                    MR.render(ctx, canvas, mapData, playerPos.x, playerPos.y, playerDir, animFrame, mapData.interactions, defeatedTrainers);
+                    MR.render(ctx, canvas, mapData, playerPos.x, playerPos.y, playerDir, animFrame, mapData.interactions, defeatedTrainers, progress?.flags, mapId);
                     frameId = requestAnimationFrame(render);
                 };
                 render();
@@ -1185,7 +1198,7 @@
                         if (newHp <= 0) {
                             addLog(`${opponentPokemon.name}は たおれた！`);
                             setBattleOver(true); setBusy(false);
-                            setTimeout(() => onWin(opponentPokemon, playerHp, partyHpMap), 1500);
+                            setTimeout(() => onWin(opponentPokemon, playerHp, partyHpMap, playerPokemon), 1500);
                             return;
                         }
                     }
@@ -1272,7 +1285,7 @@
                         if (newHp <= 0) {
                             addLog(`${opponentPokemon.name}は たおれた！`);
                             setBattleOver(true); setBusy(false);
-                            setTimeout(() => onWin(opponentPokemon, playerHp, partyHpMap), 1500);
+                            setTimeout(() => onWin(opponentPokemon, playerHp, partyHpMap, playerPokemon), 1500);
                             return;
                         }
                     } else {
@@ -1756,6 +1769,9 @@
                         {badgeInfo.reward > 0 && (
                             <p className="text-sm text-green-400">💰 {badgeInfo.reward}えん もらった！</p>
                         )}
+                        {badgeInfo.rewardItem && (
+                            <p className="text-sm text-blue-400 mt-1">💿 {badgeInfo.rewardItem}を もらった！</p>
+                        )}
                     </div>
                 )}
                 <button onClick={onContinue}
@@ -2220,8 +2236,9 @@
                 navigate('battle');
             };
 
-            const handleBattleWin = async (defeated, remainingHp, hpMap) => {
-                const lead = party[0];
+            const handleBattleWin = async (defeated, remainingHp, hpMap, activePokemon) => {
+                // activePokemon = バトル中に実際戦っていたポケモン（入れ替え後）
+                const lead = activePokemon || party[0];
                 if (!lead) return;
                 const battleHp = remainingHp != null ? Math.max(1, Math.ceil(remainingHp)) : lead.currentHp;
 
@@ -2333,6 +2350,7 @@
                     if (gym) {
                         await Repo.addBadge(playerId, gym.badge);
                         await Repo.updatePlayerMoney(playerId, playerMoney + gym.reward);
+                        if (gym.rewardItem) await Repo.addItem(playerId, gym.rewardItem, 1);
                     }
                 }
 
@@ -2361,7 +2379,8 @@
                             leaderName: gym.leader.name,
                             afterDialogue: gym.dialogue?.after,
                             reward: gym.reward,
-                            image: gym.image
+                            image: gym.image,
+                            rewardItem: gym.rewardItem ? Items[gym.rewardItem]?.name : null
                         };
                     }
                 }
@@ -2540,6 +2559,13 @@
                         onInteraction={handleMapInteraction}
                         onOpenParty={() => navigate('party')}
                         onReport={() => navigate('report')}
+                        onPickupItem={async (itemKey, inter) => {
+                            await Repo.addItem(playerId, itemKey, 1);
+                            // 拾ったアイテムをマップから消す（progressに記録）
+                            const pickedKey = `picked_${currentMapId}_${inter.x}_${inter.y}`;
+                            await Repo.setStoryFlag(playerId, pickedKey, true);
+                            await reloadData(playerId);
+                        }}
                         interactionMessage={interactionMessage}
                     />;
                 }

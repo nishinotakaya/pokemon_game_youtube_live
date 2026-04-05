@@ -155,6 +155,7 @@ window.Game.Data.Maps = {
             { x: 7, y: 3, type: 'trainer', action: 'youngster_1', label: 'たんぱんこぞう' },
             { x: 7, y: 12, type: 'trainer', action: 'lass_1', label: 'ミニスカート' },
             { x: 7, y: 9, type: 'sign', action: 'sign', message: '↑ マサラタウン\n↓ トキワシティ' },
+            { x: 3, y: 6, type: 'item', action: 'potion', label: 'アイテム' },
         ]
     },
 
@@ -202,6 +203,8 @@ window.Game.Data.Maps = {
             { x: 7, y: 3, type: 'trainer', action: 'youngster_2', label: 'たんぱんこぞう' },
             { x: 7, y: 12, type: 'trainer', action: 'bug_catcher_1', label: 'むしとりしょうねん' },
             { x: 7, y: 9, type: 'sign', action: 'sign', message: '↑ トキワシティ\n↓ ニビシティ' },
+            { x: 10, y: 5, type: 'item', action: 'tm_aerial_ace', label: 'アイテム' },
+            { x: 4, y: 15, type: 'item', action: 'super_potion', label: 'アイテム' },
         ]
     },
 
@@ -290,6 +293,8 @@ window.Game.Data.Maps = {
             { x: 7, y: 3, type: 'trainer', action: 'hiker_1', label: 'やまおとこ' },
             { x: 7, y: 12, type: 'trainer', action: 'youngster_3', label: 'たんぱんこぞう' },
             { x: 7, y: 9, type: 'sign', action: 'sign', message: '↑ ニビシティ\n↓ ハナダシティ' },
+            { x: 3, y: 7, type: 'item', action: 'tm_iron_head', label: 'アイテム' },
+            { x: 11, y: 14, type: 'item', action: 'great_ball', label: 'アイテム' },
         ]
     },
 
@@ -375,6 +380,8 @@ window.Game.Data.Maps = {
             { x: 7, y: 3, type: 'trainer', action: 'swimmer_1', label: 'かいパンやろう' },
             { x: 7, y: 12, type: 'trainer', action: 'fisherman_1', label: 'つりびと' },
             { x: 7, y: 9, type: 'sign', action: 'sign', message: '↑ ハナダシティ\n↓ クチバシティ' },
+            { x: 11, y: 5, type: 'item', action: 'tm_surf', label: 'アイテム' },
+            { x: 3, y: 16, type: 'item', action: 'tm_flamethrower', label: 'アイテム' },
         ]
     },
 
@@ -460,6 +467,8 @@ window.Game.Data.Maps = {
             { x: 7, y: 3, type: 'trainer', action: 'psychic_1', label: 'サイキッカー' },
             { x: 7, y: 12, type: 'trainer', action: 'ace_trainer_1', label: 'エリートトレーナー' },
             { x: 7, y: 9, type: 'sign', action: 'sign', message: '↑ クチバシティ\n↓ タマムシシティ' },
+            { x: 2, y: 4, type: 'item', action: 'tm_psychic', label: 'アイテム' },
+            { x: 12, y: 13, type: 'item', action: 'tm_dark_pulse', label: 'アイテム' },
         ]
     },
 
@@ -545,6 +554,9 @@ window.Game.Data.Maps = {
             { x: 7, y: 3, type: 'trainer', action: 'ace_trainer_2', label: 'エリートトレーナー' },
             { x: 7, y: 11, type: 'trainer', action: 'veteran_1', label: 'ベテラン' },
             { x: 7, y: 9, type: 'sign', action: 'sign', message: '↑ タマムシシティ\n↓ トキワシティ' },
+            { x: 3, y: 3, type: 'item', action: 'tm_dragon_claw', label: 'アイテム' },
+            { x: 11, y: 15, type: 'item', action: 'tm_hyper_beam', label: 'アイテム' },
+            { x: 6, y: 7, type: 'item', action: 'ultra_ball', label: 'アイテム' },
         ]
     },
 };

@@ -285,7 +285,7 @@ window.Game.Data.GymLeaders = {
     nibi_gym: {
         leader: { name: 'ジムリーダー タケシ', title: 'いわタイプの つかいて' },
         image: LEADER_SPRITES.brock,
-        badge: 'nibi_badge', badgeName: 'グレーバッジ', type: 'ground', reward: 2000,
+        badge: 'nibi_badge', badgeName: 'グレーバッジ', type: 'ground', reward: 2000, rewardItem: 'tm_stone_edge',
         team: [
             { pokemon: 'geodude', level: 12 },
             { pokemon: 'onix', level: 14 }
@@ -298,7 +298,7 @@ window.Game.Data.GymLeaders = {
     hanada_gym: {
         leader: { name: 'ジムリーダー カスミ', title: 'みずタイプの つかいて' },
         image: LEADER_SPRITES.misty,
-        badge: 'hanada_badge', badgeName: 'ブルーバッジ', type: 'water', reward: 3500,
+        badge: 'hanada_badge', badgeName: 'ブルーバッジ', type: 'water', reward: 3500, rewardItem: 'tm_surf',
         team: [
             { pokemon: 'staryu', level: 18 },
             { pokemon: 'starmie', level: 21 }
@@ -311,7 +311,7 @@ window.Game.Data.GymLeaders = {
     kuchiba_gym: {
         leader: { name: 'ジムリーダー マチス', title: 'でんきタイプの つかいて' },
         image: LEADER_SPRITES.surge,
-        badge: 'kuchiba_badge', badgeName: 'オレンジバッジ', type: 'electric', reward: 5000,
+        badge: 'kuchiba_badge', badgeName: 'オレンジバッジ', type: 'electric', reward: 5000, rewardItem: 'tm_thunderbolt',
         team: [
             { pokemon: 'pikachu', level: 18 },
             { pokemon: 'luxray', level: 21 },
@@ -325,7 +325,7 @@ window.Game.Data.GymLeaders = {
     tamamushi_gym: {
         leader: { name: 'ジムリーダー エリカ', title: 'くさタイプの つかいて' },
         image: LEADER_SPRITES.erika,
-        badge: 'tamamushi_badge', badgeName: 'レインボーバッジ', type: 'grass', reward: 7000,
+        badge: 'tamamushi_badge', badgeName: 'レインボーバッジ', type: 'grass', reward: 7000, rewardItem: 'tm_solar_beam',
         team: [
             { pokemon: 'victreebel', level: 29 },
             { pokemon: 'sceptile', level: 29 },
@@ -339,7 +339,7 @@ window.Game.Data.GymLeaders = {
     tokiwa_gym: {
         leader: { name: 'ジムリーダー サカキ', title: 'じめんタイプの つかいて' },
         image: LEADER_SPRITES.giovanni,
-        badge: 'tokiwa_badge', badgeName: 'グリーンバッジ', type: 'ground', reward: 10000,
+        badge: 'tokiwa_badge', badgeName: 'グリーンバッジ', type: 'ground', reward: 10000, rewardItem: 'tm_earthquake',
         team: [
             { pokemon: 'nidoqueen', level: 35 },
             { pokemon: 'nidoking', level: 37 },
