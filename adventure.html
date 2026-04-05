@@ -2232,11 +2232,11 @@
                 if (!lead) return;
                 const battleHp = remainingHp != null ? Math.max(1, Math.ceil(remainingHp)) : lead.currentHp;
 
-                // 全パーティのHPをDBに保存（入れ替え分も含む）
+                // 全パーティのHPをDBに保存（ひんし含む・入れ替え分も）
                 if (hpMap) {
                     for (const p of party) {
                         const hp = hpMap[p.id];
-                        if (hp != null && p.id !== lead.id) {
+                        if (hp != null) {
                             await Repo.updatePokemon(p.id, { currentHp: Math.max(0, Math.ceil(hp)) });
                         }
                     }
@@ -2392,10 +2392,9 @@
             };
 
             const handleBattleLose = async () => {
-                // 負けたらHP1で保存（ポケセンで回復する必要がある）
-                const lead = party[0];
-                if (lead) {
-                    await Repo.updatePokemon(lead.id, { currentHp: 1 });
+                // 負けたら全員HP1で保存（ポケセンで回復する必要がある）
+                for (const p of party) {
+                    await Repo.updatePokemon(p.id, { currentHp: 1 });
                 }
                 await reloadData(playerId);
                 setBattleResult({ result: 'lose', expGained: 0 });
