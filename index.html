@@ -1579,14 +1579,16 @@
                         const p2Size = 160;
 
                         if (is2P) {
-                            // 2Pモード: フロントスプライトをそのまま描画（P1のポケモンを見てる向き）
-                            // P2は反対側から画面を見るので、フロントスプライトがP2視点で背中に見える
+                            // 2Pモード: P2を左右反転してP1と向き合わせる
                             ctx.save();
                             if (p2Action === 'hit') {
                                 ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
                                 ctx.translate((Math.random() - 0.5) * 10, 0);
                             }
-                            // メガポケモンかチェック
+                            // 左右反転
+                            ctx.translate(p2X + p2Size / 2, 0);
+                            ctx.scale(-1, 1);
+                            ctx.translate(-(p2X + p2Size / 2), 0);
                             if (!drawMegaPokemonCPU(ctx, p2.key, p2Action, w, h, {
                                 megaScizorFrontImageRef,
                                 megaCharizardFrontImageRef,
@@ -1889,9 +1891,19 @@
                         ctx.fillText(hpText, x + 15, y + 65);
                         ctx.restore();
                     };
-                    // HP表示: 左上にP2、右下にP1（1P/2P共通）
-                    drawStatus(30, 40, p2);
-                    drawStatus(w - 250, h - 110, p1);
+                    // HP表示
+                    if (is2P) {
+                        // 2Pモード: P2のHPを上下反転して表示（2P側から読める）
+                        ctx.save();
+                        ctx.translate(w, h);
+                        ctx.rotate(Math.PI);
+                        drawStatus(w - 250, h - 110, p2);
+                        ctx.restore();
+                        drawStatus(w - 250, h - 110, p1);
+                    } else {
+                        drawStatus(30, 40, p2);
+                        drawStatus(w - 250, h - 110, p1);
+                    }
 
                     ctx.restore();
                     animationId = requestAnimationFrame(render);
