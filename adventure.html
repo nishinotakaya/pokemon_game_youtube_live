@@ -400,8 +400,8 @@
                         }
                         break;
                     case 'door':
-                        if (inter.action === 'oak_lab') {
-                            onInteraction?.('oak_lab');
+                        if (inter.action === 'oak_lab' || inter.action === 'pokemon_league') {
+                            onInteraction?.(inter.action);
                         } else {
                             setDialogText(inter.label || 'ドアだ');
                         }
@@ -2185,6 +2185,16 @@
                 } else if (action === 'player_house') {
                     setInteractionMessage('ママ「いってらっしゃい！\nきを つけてね！」');
                     setTimeout(() => setInteractionMessage(null), 2500);
+                } else if (action === 'pokemon_league') {
+                    // 全バッジチェック
+                    const allBadgeIds = Object.values(GymLeaders).map(g => g.badge);
+                    if (allBadgeIds.every(b => badges.includes(b))) {
+                        setEliteIndex(0);
+                        navigate('elite_intro');
+                    } else {
+                        setInteractionMessage('すべてのバッジが そろっていない！\nジムリーダーを ぜんいん たおしてこい！');
+                        setTimeout(() => setInteractionMessage(null), 3000);
+                    }
                 }
             };
 
