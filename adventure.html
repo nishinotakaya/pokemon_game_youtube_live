@@ -346,7 +346,10 @@
                     if (itemHere) {
                         const pickedKey = `picked_${mapId}_${itemHere.x}_${itemHere.y}`;
                         if (!progress?.flags?.[pickedKey]) {
-                            handleInteraction(itemHere);
+                            const itemData = Items[itemHere.action];
+                            if (itemData) {
+                                onPickupItem?.(itemHere.action, itemHere);
+                            }
                         }
                     }
                 }
@@ -428,13 +431,9 @@
                         break;
                     case 'item': {
                         const pickedKey = `picked_${mapId}_${inter.x}_${inter.y}`;
-                        if (progress?.flags?.[pickedKey]) {
-                            setDialogText('もう なにも ない');
-                            break;
-                        }
+                        if (progress?.flags?.[pickedKey]) break;
                         const itemData = Items[inter.action];
                         if (itemData) {
-                            setDialogText(`${itemData.icon} ${itemData.name}を みつけた！`);
                             onPickupItem?.(inter.action, inter);
                         }
                         break;
@@ -2585,10 +2584,14 @@
                         onReport={() => navigate('report')}
                         onPickupItem={async (itemKey, inter) => {
                             await Repo.addItem(playerId, itemKey, 1);
-                            // 拾ったアイテムをマップから消す（progressに記録）
                             const pickedKey = `picked_${currentMapId}_${inter.x}_${inter.y}`;
                             await Repo.setStoryFlag(playerId, pickedKey, true);
                             await reloadData(playerId);
+                            const itemData = Items[itemKey];
+                            if (itemData) {
+                                setInteractionMessage(`${itemData.icon} ${itemData.name}を ひろった！`);
+                                setTimeout(() => setInteractionMessage(null), 2000);
+                            }
                         }}
                         interactionMessage={interactionMessage}
                     />;
