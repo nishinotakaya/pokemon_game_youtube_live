@@ -34,6 +34,105 @@ window.Game.MapRenderer = {
         return null;
     },
 
+    // 建物ブロックを1棟として大きく描画
+    drawBuildingBlock(ctx, tileType, sx, sy, bw, bh, ts, t) {
+        const pad = 2;
+        // === 家 ===
+        if (tileType === 3) {
+            ctx.fillStyle = '#f5f0e1';
+            ctx.fillRect(sx + pad, sy + bh * 0.2, bw - pad * 2, bh * 0.8);
+            // 屋根
+            ctx.fillStyle = '#92400e';
+            ctx.beginPath();
+            ctx.moveTo(sx - 2, sy + bh * 0.25);
+            ctx.lineTo(sx + bw / 2, sy + 2);
+            ctx.lineTo(sx + bw + 2, sy + bh * 0.25);
+            ctx.fill();
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.moveTo(sx + 2, sy + bh * 0.25);
+            ctx.lineTo(sx + bw / 2, sy + 5);
+            ctx.lineTo(sx + bw - 2, sy + bh * 0.25);
+            ctx.fill();
+            // ドア
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(sx + bw / 2 - 6, sy + bh * 0.6, 12, bh * 0.4);
+            // 窓
+            ctx.fillStyle = '#93c5fd';
+            ctx.fillRect(sx + bw * 0.2, sy + bh * 0.35, bw * 0.2, bh * 0.2);
+            ctx.fillRect(sx + bw * 0.6, sy + bh * 0.35, bw * 0.2, bh * 0.2);
+            ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1;
+            ctx.strokeRect(sx + bw * 0.2, sy + bh * 0.35, bw * 0.2, bh * 0.2);
+            ctx.strokeRect(sx + bw * 0.6, sy + bh * 0.35, bw * 0.2, bh * 0.2);
+        }
+        // === ポケモンセンター ===
+        else if (tileType === 7) {
+            ctx.fillStyle = '#fff1f2';
+            ctx.fillRect(sx + pad, sy + bh * 0.2, bw - pad * 2, bh * 0.8);
+            // 屋根
+            ctx.fillStyle = '#ec4899';
+            ctx.fillRect(sx - 2, sy + bh * 0.12, bw + 4, bh * 0.12);
+            ctx.fillStyle = '#db2777';
+            ctx.fillRect(sx, sy + bh * 0.12, bw, 2);
+            // 赤い十字
+            const cs = Math.min(bw, bh) * 0.3;
+            const cx = sx + bw / 2, cy = sy + bh * 0.55;
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(cx - cs / 2, cy - cs / 6, cs, cs / 3);
+            ctx.fillRect(cx - cs / 6, cy - cs / 2, cs / 3, cs);
+            // 光
+            const glow = 0.08 + Math.sin(t / 500) * 0.06;
+            ctx.fillStyle = `rgba(236,72,153,${glow})`;
+            ctx.fillRect(sx + pad, sy + bh * 0.2, bw - pad * 2, bh * 0.8);
+        }
+        // === ショップ ===
+        else if (tileType === 8) {
+            ctx.fillStyle = '#eff6ff';
+            ctx.fillRect(sx + pad, sy + bh * 0.2, bw - pad * 2, bh * 0.8);
+            // 屋根
+            ctx.fillStyle = '#2563eb';
+            ctx.fillRect(sx - 2, sy + bh * 0.12, bw + 4, bh * 0.12);
+            ctx.fillStyle = '#1d4ed8';
+            ctx.fillRect(sx, sy + bh * 0.12, bw, 2);
+            // ショーウィンドウ
+            ctx.fillStyle = '#bfdbfe';
+            ctx.fillRect(sx + bw * 0.1, sy + bh * 0.38, bw * 0.8, bh * 0.22);
+            ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1;
+            ctx.strokeRect(sx + bw * 0.1, sy + bh * 0.38, bw * 0.8, bh * 0.22);
+            // MART
+            ctx.fillStyle = '#1e40af';
+            ctx.font = `bold ${Math.max(10, bw * 0.12)}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.fillText('MART', sx + bw / 2, sy + bh * 0.82);
+            ctx.textAlign = 'left';
+        }
+        // === ジム ===
+        else if (tileType === 9) {
+            ctx.fillStyle = '#fee2e2';
+            ctx.fillRect(sx + pad, sy + bh * 0.18, bw - pad * 2, bh * 0.82);
+            // 装飾ライン
+            ctx.fillStyle = '#fecaca';
+            ctx.fillRect(sx + 4, sy + bh * 0.5, bw - 8, 2);
+            // 三角屋根
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.moveTo(sx - 2, sy + bh * 0.2);
+            ctx.lineTo(sx + bw / 2, sy + 1);
+            ctx.lineTo(sx + bw + 2, sy + bh * 0.2);
+            ctx.fill();
+            // GYMテキスト
+            ctx.fillStyle = '#dc2626';
+            ctx.font = `bold ${Math.max(12, bw * 0.14)}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.fillText('GYM', sx + bw / 2, sy + bh * 0.72);
+            ctx.textAlign = 'left';
+            // 光
+            const glow = 0.06 + Math.sin(t / 600) * 0.04;
+            ctx.fillStyle = `rgba(220,38,38,${glow})`;
+            ctx.fillRect(sx + pad, sy + bh * 0.18, bw - pad * 2, bh * 0.82);
+        }
+    },
+
     drawTile(ctx, tileType, sx, sy, ts, t) {
         // === 道 ===
         if (tileType === 0) {
@@ -543,13 +642,38 @@ window.Game.MapRenderer = {
         const ex = Math.min(mapData.width, Math.ceil((camX + w) / ts) + 1);
         const ey = Math.min(mapData.height, Math.ceil((camY + h) / ts) + 1);
 
+        const buildingTiles = [3, 7, 8, 9];
+        // 1パス目: 道・草・壁など通常タイル描画
         for (let ty = sy; ty < ey; ty++) {
             for (let tx = sx; tx < ex; tx++) {
                 const tile = mapData.tiles[ty * mapData.width + tx];
                 const screenX = tx * ts - camX;
                 const screenY = ty * ts - camY;
-                // NPC位置は道として描画
-                this.drawTile(ctx, tile === 10 ? 0 : tile, screenX, screenY, ts, t);
+                if (buildingTiles.includes(tile)) {
+                    // 建物タイルの下地は道を描画
+                    this.drawTile(ctx, 0, screenX, screenY, ts, t);
+                } else {
+                    this.drawTile(ctx, tile === 10 ? 0 : tile, screenX, screenY, ts, t);
+                }
+            }
+        }
+        // 2パス目: 建物を左上タイルだけ大きく描画
+        const drawnBuildings = new Set();
+        for (let ty = sy; ty < ey; ty++) {
+            for (let tx = sx; tx < ex; tx++) {
+                const tile = mapData.tiles[ty * mapData.width + tx];
+                if (!buildingTiles.includes(tile)) continue;
+                // 左や上に同じタイルがあればスキップ（左上タイルのみ描画）
+                const leftTile = tx > 0 ? mapData.tiles[ty * mapData.width + (tx - 1)] : -1;
+                const upTile = ty > 0 ? mapData.tiles[(ty - 1) * mapData.width + tx] : -1;
+                if (leftTile === tile || upTile === tile) continue;
+                // ブロックサイズを計算（右・下に同タイルが何マス続くか）
+                let bw = 1, bh = 1;
+                while (tx + bw < mapData.width && mapData.tiles[ty * mapData.width + tx + bw] === tile) bw++;
+                while (ty + bh < mapData.height && mapData.tiles[(ty + bh) * mapData.width + tx] === tile) bh++;
+                const screenX = tx * ts - camX;
+                const screenY = ty * ts - camY;
+                this.drawBuildingBlock(ctx, tile, screenX, screenY, ts * bw, ts * bh, ts, t);
             }
         }
 
