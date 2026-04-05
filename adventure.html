@@ -394,14 +394,7 @@
                         break;
                     case 'trainer':
                         if (!defeatedTrainers.includes(inter.action)) {
-                            const trainer = Trainers[inter.action];
-                            if (trainer) {
-                                setDialogText(trainer.dialogue?.before || 'しょうぶだ！');
-                                setTimeout(() => {
-                                    setDialogText(null);
-                                    onTrainerBattle(inter.action);
-                                }, 1500);
-                            }
+                            onTrainerBattle(inter.action);
                         } else {
                             setDialogText('もう たたかった トレーナーだ');
                         }
