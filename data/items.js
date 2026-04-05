@@ -104,7 +104,7 @@ window.Game.Data.Items = {
         boostAmount: 0.5,
         price: 500,
         icon: '🛡️'
-    }
+    },
     // わざマシン
     tm_thunderbolt: {
         name: 'わざマシン01 10まんボルト', type: 'tm', moveName: '10まんボルト',
