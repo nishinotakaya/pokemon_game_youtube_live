@@ -458,6 +458,6 @@ window.Game.Data.NPCs = {
                 'さあ ぼうけんに でかけるのじゃ！'
             ]
         },
-        starterPokemon: ['pikachu', 'charmander', 'squirtle', 'bulbasaur']
+        starterPokemon: ['pikachu', 'charmander', 'squirtle', 'bulbasaur', 'scyther']
     }
 };
