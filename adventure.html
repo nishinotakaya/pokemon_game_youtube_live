@@ -1984,6 +1984,7 @@
             const [gymId, setGymId] = useState(null);
             const [eliteIndex, setEliteIndex] = useState(0);
             const [trainerTeamIndex, setTrainerTeamIndex] = useState(0); // トレーナーの何匹目か
+            const [battleActivePokemonId, setBattleActivePokemonId] = useState(null); // バトル中の実際のポケモンID
             const [healed, setHealed] = useState(false);
             const [dialogueQueue, setDialogueQueue] = useState([]);
             const [currentDialogue, setCurrentDialogue] = useState(null);
@@ -2328,7 +2329,8 @@
                 const nextIndex = trainerTeamIndex + 1;
 
                 if (team && nextIndex < team.length) {
-                    // まだ次のポケモンがいる → 次のバトルへ
+                    // まだ次のポケモンがいる → 次のバトルへ（勝ったポケモンで続行）
+                    setBattleActivePokemonId(lead.id);
                     await reloadData(playerId);
                     setTrainerTeamIndex(nextIndex);
                     const next = team[nextIndex];
@@ -2609,8 +2611,19 @@
                 }
 
                 case 'battle': {
-                    const lead = party[0];
-                    if (!lead || !battleOpponent) {
+                    // 連戦時は勝ったポケモンで続行、なければparty[0]
+                    let lead = party[0];
+                    if (battleActivePokemonId) {
+                        const active = party.find(p => p.id === battleActivePokemonId && p.currentHp > 0);
+                        if (active) lead = active;
+                        setBattleActivePokemonId(null);
+                    }
+                    // party[0]がひんしなら生きてるポケモンを探す
+                    if (lead && lead.currentHp <= 0) {
+                        const alive = party.find(p => p.currentHp > 0);
+                        if (alive) lead = alive;
+                    }
+                    if (!lead || lead.currentHp <= 0 || !battleOpponent) {
                         setScreen('world_map');
                         return null;
                     }
