@@ -1579,16 +1579,12 @@
                         const p2Size = 160;
 
                         if (is2P) {
-                            // 2Pモード: P2を左右反転してP1と向き合わせる
+                            // 2Pモード: フロントスプライトをそのまま描画
                             ctx.save();
                             if (p2Action === 'hit') {
                                 ctx.filter = 'brightness(3) sepia(1) hue-rotate(-50deg)';
                                 ctx.translate((Math.random() - 0.5) * 10, 0);
                             }
-                            // 左右反転
-                            ctx.translate(p2X + p2Size / 2, 0);
-                            ctx.scale(-1, 1);
-                            ctx.translate(-(p2X + p2Size / 2), 0);
                             if (!drawMegaPokemonCPU(ctx, p2.key, p2Action, w, h, {
                                 megaScizorFrontImageRef,
                                 megaCharizardFrontImageRef,
@@ -1893,13 +1889,13 @@
                     };
                     // HP表示
                     if (is2P) {
-                        // 2Pモード: P2のHPを上下反転して表示（2P側から読める）
+                        // 2Pモード: P1のHPを上下反転（1P側から読める）
+                        drawStatus(30, 40, p2);
                         ctx.save();
                         ctx.translate(w, h);
                         ctx.rotate(Math.PI);
-                        drawStatus(w - 250, h - 110, p2);
+                        drawStatus(30, 40, p1);
                         ctx.restore();
-                        drawStatus(w - 250, h - 110, p1);
                     } else {
                         drawStatus(30, 40, p2);
                         drawStatus(w - 250, h - 110, p1);
