@@ -261,10 +261,12 @@
         // ===== 方向パッドボタン（長押し連続移動対応） =====
         const DPadButton = ({ label, onPress }) => {
             const intervalRef = useRef(null);
+            const onPressRef = useRef(onPress);
+            onPressRef.current = onPress; // 常に最新のコールバックを参照
             const start = (e) => {
                 e.preventDefault();
-                onPress();
-                intervalRef.current = setInterval(onPress, 180);
+                onPressRef.current();
+                intervalRef.current = setInterval(() => onPressRef.current(), 150);
             };
             const stop = (e) => {
                 e?.preventDefault();
