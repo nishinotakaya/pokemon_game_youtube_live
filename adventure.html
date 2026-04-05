@@ -2244,6 +2244,16 @@
             };
 
             const handleMapChange = (newMapId, entryPos) => {
+                // チャンピオンロードは全バッジ必要
+                if (newMapId === 'champion_road') {
+                    const allBadgeIds = Object.values(GymLeaders).map(g => g.badge);
+                    if (!allBadgeIds.every(b => badges.includes(b))) {
+                        setInteractionMessage('このさきは まだ いけないようだ...\nすべてのバッジが ひつようだ！');
+                        setTimeout(() => setInteractionMessage(null), 3000);
+                        return;
+                    }
+                }
+
                 // 町のバッジ解放チェック
                 const town = Towns[newMapId];
                 if (town && town.unlockedBy) {

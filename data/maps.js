@@ -576,7 +576,7 @@ window.Game.Data.Maps = {
         bgColor: '#1e293b',
         // prettier-ignore
         tiles: [
-            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+            5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5,
             5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5,
             5, 5, 5, 5, 0, 0, 5, 5, 0, 0, 0, 5, 5, 0, 0, 0, 5, 5, 5, 5,
             5, 5, 5, 0, 0, 0, 5, 0, 0, 10, 0, 0, 5, 0, 0, 0, 0, 5, 5, 5,
@@ -601,6 +601,10 @@ window.Game.Data.Maps = {
         exits: [
             // 左=トキワに戻る
             { x: 0, y: 10, to: 'tokiwa_city', entryX: 16, entryY: 8 },
+            // 上=トキワに戻る
+            { x: 8, y: 0, to: 'tokiwa_city', entryX: 9, entryY: 14 },
+            { x: 9, y: 0, to: 'tokiwa_city', entryX: 9, entryY: 14 },
+            { x: 10, y: 0, to: 'tokiwa_city', entryX: 9, entryY: 14 },
             // 下=セキエイ高原へ
             { x: 8, y: 19, to: 'sekiei_plateau', entryX: 9, entryY: 1 },
             { x: 9, y: 19, to: 'sekiei_plateau', entryX: 9, entryY: 1 },
