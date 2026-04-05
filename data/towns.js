@@ -328,7 +328,7 @@ window.Game.Data.Evolutions = {
     nidoking:    { evolvedId: 'nidoking',   levelRequired: 99 }, // 既に最終
     nidoqueen:   { evolvedId: 'nidoqueen',  levelRequired: 99 },
     // ストライク→ハッサム
-    scyther:     { evolvedId: 'scizor',     levelRequired: 30 },
+    scyther:     { evolvedId: 'scizor',     levelRequired: 20 },
     // ドラゴン系
     garchomp:    { evolvedId: 'garchomp',   levelRequired: 99 },
     dragonite:   { evolvedId: 'dragonite',  levelRequired: 99 },
