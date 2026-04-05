@@ -684,7 +684,97 @@
         };
 
         // ===== ポケモンパーティ画面 =====
-        const PartyScreen = ({ party, allPokemons, badges, onBack, onSwap }) => (
+        const PartyScreen = ({ party, allPokemons, badges, onBack, onSwap }) => {
+            const [selectedId, setSelectedId] = useState(null);
+            const selected = allPokemons.find(p => p.id === selectedId);
+
+            if (selected) {
+                const hpPercent = selected.maxHp > 0 ? (selected.currentHp / selected.maxHp) * 100 : 0;
+                const expThis = Leveling.expForLevel(selected.level);
+                const expNext = Leveling.expForLevel(Math.min(selected.level + 1, 100));
+                const expPct = expNext > expThis ? ((selected.exp || 0) - expThis) / (expNext - expThis) * 100 : 100;
+                const isParty = selected.isInParty === 1;
+                return (
+                    <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 max-h-[90vh] overflow-y-auto scrollable">
+                        <div className="flex justify-between items-center mb-4">
+                            <button onClick={() => setSelectedId(null)} className="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded-xl text-sm border border-slate-500">← もどる</button>
+                            <button onClick={() => { onSwap(selected.id, !isParty); setSelectedId(null); }}
+                                className={`px-4 py-2 rounded-xl text-sm font-bold ${isParty ? 'bg-red-700 hover:bg-red-600' : 'bg-blue-700 hover:bg-blue-600'}`}>
+                                {isParty ? 'パーティからはずす' : 'パーティにいれる'}
+                            </button>
+                        </div>
+
+                        {/* ポケモン画像・名前 */}
+                        <div className="text-center mb-4">
+                            <img src={getPokemonImageUrl(selected.masterId)} className="w-32 h-32 mx-auto"
+                                style={{ imageRendering: 'pixelated', filter: 'drop-shadow(0 0 10px rgba(59,130,246,0.4))' }} />
+                            <h3 className="text-2xl text-yellow-400 mt-2">{selected.nickname || selected.name}</h3>
+                            <div className="flex items-center justify-center gap-2 mt-1">
+                                <span className={`text-sm px-2 py-0.5 rounded type-${selected.type}`}>{TYPE_NAME_JP[selected.type]}タイプ</span>
+                                <span className="text-sm text-slate-400">Lv.{selected.level}</span>
+                                {isParty && <span className="text-xs bg-blue-600 px-2 py-0.5 rounded">てもち</span>}
+                            </div>
+                        </div>
+
+                        {/* HP */}
+                        <div className="bg-slate-900 rounded-xl p-4 mb-3 border border-slate-700">
+                            <div className="flex justify-between text-sm mb-1">
+                                <span className="text-slate-400">HP</span>
+                                <span>{selected.currentHp} / {selected.maxHp}</span>
+                            </div>
+                            <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full transition-all ${hpPercent > 50 ? 'bg-green-500' : hpPercent > 20 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                    style={{ width: `${hpPercent}%` }}></div>
+                            </div>
+                            {/* EXP */}
+                            <div className="flex justify-between text-sm mt-3 mb-1">
+                                <span className="text-blue-400">EXP</span>
+                                <span className="text-xs text-slate-500">つぎのレベルまで {Leveling.expToNextLevel(selected.level, selected.exp || 0)}</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${expPct}%` }}></div>
+                            </div>
+                        </div>
+
+                        {/* ステータス */}
+                        <div className="bg-slate-900 rounded-xl p-4 mb-3 border border-slate-700">
+                            <h4 className="text-sm text-yellow-400 mb-2">ステータス</h4>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="text-center">
+                                    <div className="text-xs text-slate-400">こうげき</div>
+                                    <div className="text-lg font-bold text-red-400">{selected.attack}</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-xs text-slate-400">ぼうぎょ</div>
+                                    <div className="text-lg font-bold text-blue-400">{selected.defense}</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-xs text-slate-400">すばやさ</div>
+                                    <div className="text-lg font-bold text-green-400">{selected.speed}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* わざ */}
+                        <div className="bg-slate-900 rounded-xl p-4 border border-slate-700">
+                            <h4 className="text-sm text-yellow-400 mb-2">おぼえている わざ</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                                {(selected.moves || []).map((move, i) => (
+                                    <div key={i} className={`p-2 rounded-lg border type-${move.type} border-opacity-50`}>
+                                        <div className="font-bold text-sm text-white">{move.name}</div>
+                                        <div className="flex justify-between text-[10px] text-white/70 mt-0.5">
+                                            <span>{TYPE_NAME_JP[move.type]}</span>
+                                            <span>威力:{move.power || '-'} 命中:{move.acc}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
             <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 max-h-[90vh] overflow-hidden flex flex-col">
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h2 className="text-2xl text-yellow-400">てもちポケモン</h2>
@@ -710,8 +800,8 @@
                         const isParty = pokemon.isInParty === 1;
                         const hpPercent = pokemon.maxHp > 0 ? (pokemon.currentHp / pokemon.maxHp) * 100 : 0;
                         return (
-                            <div key={pokemon.id}
-                                className={`p-3 rounded-xl border-2 flex items-center gap-3 transition-all ${isParty ? 'bg-slate-700 border-blue-500' : 'bg-slate-900 border-slate-700'}`}>
+                            <div key={pokemon.id} onClick={() => setSelectedId(pokemon.id)}
+                                className={`p-3 rounded-xl border-2 flex items-center gap-3 transition-all cursor-pointer hover:border-yellow-400 ${isParty ? 'bg-slate-700 border-blue-500' : 'bg-slate-900 border-slate-700'}`}>
                                 <img src={getPokemonImageUrl(pokemon.masterId)} className="w-16 h-16" />
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2">
@@ -729,26 +819,8 @@
                                     <div className="text-xs text-slate-500 mt-0.5">
                                         ATK:{pokemon.attack} DEF:{pokemon.defense} SPD:{pokemon.speed}
                                     </div>
-                                    {/* EXPバー */}
-                                    {(() => {
-                                        const expThis = Leveling.expForLevel(pokemon.level);
-                                        const expNext = Leveling.expForLevel(Math.min(pokemon.level + 1, 100));
-                                        const pct = expNext > expThis ? ((pokemon.exp || 0) - expThis) / (expNext - expThis) * 100 : 100;
-                                        return (
-                                            <div className="flex items-center gap-1 mt-0.5">
-                                                <span className="text-[9px] text-blue-400">EXP</span>
-                                                <div className="w-20 h-1.5 bg-slate-600 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }}></div>
-                                                </div>
-                                                <span className="text-[9px] text-slate-500">{Leveling.expToNextLevel(pokemon.level, pokemon.exp || 0)}</span>
-                                            </div>
-                                        );
-                                    })()}
                                 </div>
-                                <button onClick={() => onSwap(pokemon.id, !isParty)}
-                                    className={`px-3 py-1 rounded-lg text-xs font-bold ${isParty ? 'bg-red-700 hover:bg-red-600' : 'bg-blue-700 hover:bg-blue-600'}`}>
-                                    {isParty ? 'はずす' : 'いれる'}
-                                </button>
+                                <span className="text-slate-500 text-lg">▶</span>
                             </div>
                         );
                     })}
@@ -757,7 +829,8 @@
                     )}
                 </div>
             </div>
-        );
+            );
+        };
 
         // ===== バッグ画面 =====
         const BagScreen = ({ items, onUseItem, onBack }) => (
@@ -805,7 +878,7 @@
         );
 
         // ===== バトル画面（簡易版 - ターン制コマンドバトル） =====
-        const BattleScreen = ({ playerPokemon: initialPokemon, opponentPokemon, opponentName, isCatchable, playerItems, battleType, party, onWin, onLose, onFlee, onCatch, onUseBall, onSwitch }) => {
+        const BattleScreen = ({ playerPokemon: initialPokemon, opponentPokemon, opponentName, isCatchable, playerItems, battleType, party, onWin, onLose, onFlee, onCatch, onUseBall, onSwitch, onUseItem }) => {
             const [playerPokemon, setPlayerPokemon] = useState(initialPokemon);
             const [playerHp, setPlayerHp] = useState(initialPokemon.currentHp);
             const [opponentHp, setOpponentHp] = useState(opponentPokemon.currentHp || opponentPokemon.maxHp);
@@ -817,6 +890,7 @@
             const [opponentBoosts, setOpponentBoosts] = useState({ atkBoost: 1, defBoost: 1, poisoned: false });
             const [showBallSelect, setShowBallSelect] = useState(false);
             const [showPartySelect, setShowPartySelect] = useState(false);
+            const [showItemSelect, setShowItemSelect] = useState(false);
             // バトル中のパーティHP管理
             const [partyHpMap, setPartyHpMap] = useState(() => {
                 const map = {};
@@ -1118,7 +1192,7 @@
                         if (newHp <= 0) {
                             addLog(`${opponentPokemon.name}は たおれた！`);
                             setBattleOver(true); setBusy(false);
-                            setTimeout(() => onWin(opponentPokemon, playerHp), 1500);
+                            setTimeout(() => onWin(opponentPokemon, playerHp, partyHpMap), 1500);
                             return;
                         }
                     }
@@ -1205,7 +1279,7 @@
                         if (newHp <= 0) {
                             addLog(`${opponentPokemon.name}は たおれた！`);
                             setBattleOver(true); setBusy(false);
-                            setTimeout(() => onWin(opponentPokemon, playerHp), 1500);
+                            setTimeout(() => onWin(opponentPokemon, playerHp, partyHpMap), 1500);
                             return;
                         }
                     } else {
@@ -1272,6 +1346,37 @@
                     doAttackWithAnim(cpuMove, 'opponent');
                 }, 800);
             };
+
+            // バトル中アイテム使用（1ターン消費）
+            const useHealItem = async (itemKey) => {
+                if (busy || battleOver) return;
+                const item = Items[itemKey];
+                if (!item || item.type !== 'heal') return;
+
+                setShowItemSelect(false);
+                setBusy(true);
+
+                addLog(`${item.name}を つかった！`);
+                if (onUseItem) await onUseItem(itemKey);
+
+                const healAmt = item.healAmount || 20;
+                const newHp = Math.min(playerPokemon.maxHp, playerHp + healAmt);
+                const healed = newHp - playerHp;
+                setPlayerHp(newHp);
+                addLog(`${playerPokemon.name}の HPが ${healed} かいふくした！`);
+                await new Promise(r => setTimeout(r, 800));
+
+                // 相手のターン
+                setTurn('opponent');
+                setBusy(false);
+                setTimeout(() => {
+                    const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
+                    doAttackWithAnim(cpuMove, 'opponent');
+                }, 800);
+            };
+
+            // 回復アイテムだけフィルタ
+            const healItems = playerItems.filter(pi => Items[pi.itemKey]?.type === 'heal' && pi.quantity > 0);
 
             const tryFlee = () => {
                 if (busy || battleOver) return;
@@ -1341,7 +1446,7 @@
                 setBusy(false);
                 setTimeout(() => {
                     ballAnimRef.current.active = false;
-                    onCatch(opponentPokemon, ballType, playerHp);
+                    onCatch(opponentPokemon, ballType, playerHp, partyHpMap);
                 }, 1500);
             };
 
@@ -1427,6 +1532,20 @@
                                     <button onClick={() => setShowPartySelect(false)} className="bg-slate-700 text-white p-2 rounded-xl text-sm border border-slate-500">もどる</button>
                                 </div>
                             </div>
+                        ) : showItemSelect ? (
+                            <div className="col-span-2 p-3">
+                                <p className="text-white text-sm mb-2 text-yellow-400">アイテムを つかう</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {healItems.map(pi => (
+                                        <button key={pi.itemKey} onClick={() => useHealItem(pi.itemKey)}
+                                            className="bg-green-700 hover:bg-green-600 p-2 rounded-xl text-white text-sm border-2 border-green-500 font-bold">
+                                            {Items[pi.itemKey]?.icon} {Items[pi.itemKey]?.name} x{pi.quantity}
+                                            <div className="text-[10px] opacity-70">HP +{Items[pi.itemKey]?.healAmount}</div>
+                                        </button>
+                                    ))}
+                                    <button onClick={() => setShowItemSelect(false)} className="bg-slate-700 text-white p-2 rounded-xl text-sm border border-slate-500">もどる</button>
+                                </div>
+                            </div>
                         ) : showBallSelect ? (
                             <div className="col-span-2 p-3">
                                 <p className="text-white text-sm mb-2 text-yellow-400">ボールを えらべ！</p>
@@ -1473,6 +1592,16 @@
                                                     ? 'bg-green-700 text-white border-green-500 hover:bg-green-600'
                                                     : 'bg-slate-800 text-slate-600 border-transparent opacity-50'}`}>
                                             いれかえ
+                                        </button>
+                                    )}
+                                    {healItems.length > 0 && (
+                                        <button onClick={() => setShowItemSelect(true)}
+                                            disabled={turn !== 'player' || busy || battleOver}
+                                            className={`p-2 text-xs font-bold rounded-xl border-2 transition-all ${
+                                                turn === 'player' && !busy && !battleOver
+                                                    ? 'bg-orange-700 text-white border-orange-500 hover:bg-orange-600'
+                                                    : 'bg-slate-800 text-slate-600 border-transparent opacity-50'}`}>
+                                            どうぐ
                                         </button>
                                     )}
                                     <button onClick={tryFlee}
@@ -2098,10 +2227,20 @@
                 navigate('battle');
             };
 
-            const handleBattleWin = async (defeated, remainingHp) => {
+            const handleBattleWin = async (defeated, remainingHp, hpMap) => {
                 const lead = party[0];
                 if (!lead) return;
                 const battleHp = remainingHp != null ? Math.max(1, Math.ceil(remainingHp)) : lead.currentHp;
+
+                // 全パーティのHPをDBに保存（入れ替え分も含む）
+                if (hpMap) {
+                    for (const p of party) {
+                        const hp = hpMap[p.id];
+                        if (hp != null && p.id !== lead.id) {
+                            await Repo.updatePokemon(p.id, { currentHp: Math.max(0, Math.ceil(hp)) });
+                        }
+                    }
+                }
 
                 // EXP計算
                 const isGym = battleType === 'gym';
@@ -2267,8 +2406,15 @@
                 goBack();
             };
 
-            const handleCatch = async (pokemon, ballType, remainingHp) => {
+            const handleCatch = async (pokemon, ballType, remainingHp, hpMap) => {
                 // ボール消費はtryThrowBall時に実施済み
+                // 全パーティHP保存
+                if (hpMap) {
+                    for (const p of party) {
+                        const hp = hpMap[p.id];
+                        if (hp != null) await Repo.updatePokemon(p.id, { currentHp: Math.max(0, Math.ceil(hp)) });
+                    }
+                }
                 await Repo.addOwnedPokemon(playerId, pokemon);
 
                 const lead = party[0];
@@ -2458,6 +2604,10 @@
                         }}
                         onSwitch={async (pokemonId, currentHp) => {
                             await Repo.updatePokemon(pokemonId, { currentHp: Math.max(0, Math.ceil(currentHp)) });
+                        }}
+                        onUseItem={async (itemKey) => {
+                            await Repo.useItem(playerId, itemKey, 1);
+                            await reloadData(playerId);
                         }} />;
                 }
 
