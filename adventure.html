@@ -343,6 +343,7 @@
                 }
 
                 // アイテム自動ピックアップ（上に乗ったら拾う）
+                let pickedUpItem = false;
                 if (mapData.interactions) {
                     const itemHere = mapData.interactions.find(i => i.x === newX && i.y === newY && i.type === 'item');
                     if (itemHere) {
@@ -351,13 +352,14 @@
                             const itemData = Items[itemHere.action];
                             if (itemData) {
                                 onPickupItem?.(itemHere.action, itemHere);
+                                pickedUpItem = true;
                             }
                         }
                     }
                 }
 
-                // 草むらエンカウントチェック
-                if (tile === 1 && mapData.encounters) {
+                // 草むらエンカウントチェック（アイテム拾得時は発火しない：黒画面バグ回避）
+                if (!pickedUpItem && tile === 1 && mapData.encounters) {
                     const routeData = Routes[mapData.encounters];
                     if (routeData && Encounter.checkEncounter(routeData.type || 'grass')) {
                         const wildPokemon = Encounter.generateWildPokemon(routeData.encounters);
@@ -854,11 +856,44 @@
         const BagScreen = ({ items, party, onUseTM, onBack }) => {
             const [selectedTM, setSelectedTM] = useState(null);
             const [selectedPokemon, setSelectedPokemon] = useState(null);
-            const [replaceMoveIdx, setReplaceMoveIdx] = useState(null);
             const [message, setMessage] = useState(null);
+            const [learning, setLearning] = useState(false);
 
             const tmItem = selectedTM ? Items[selectedTM] : null;
             const moveData = tmItem ? MOVES_DATA[tmItem.moveName] : null;
+
+            // 4技未満のときは自動で覚える（useEffectで副作用を分離）
+            useEffect(() => {
+                if (!selectedPokemon || message || learning || !tmItem) return;
+                const moves = selectedPokemon.moves || [];
+                if (moves.length < 4) {
+                    setLearning(true);
+                    (async () => {
+                        await onUseTM?.(selectedTM, selectedPokemon.id, null);
+                        setMessage(`${selectedPokemon.name}は\n${tmItem.moveName}を おぼえた！`);
+                        setLearning(false);
+                    })();
+                }
+            }, [selectedPokemon, message, learning, tmItem, selectedTM, onUseTM]);
+
+            const resetBag = () => {
+                setMessage(null);
+                setSelectedTM(null);
+                setSelectedPokemon(null);
+                setLearning(false);
+            };
+
+            // 完了メッセージ（先に判定して黒画面を防ぐ）
+            if (message) {
+                return (
+                    <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                        <div className="text-6xl mb-4">💿</div>
+                        <p className="text-xl text-yellow-400 whitespace-pre-line mb-6">{message}</p>
+                        <button onClick={resetBag}
+                            className="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl font-bold border-2 border-blue-400">OK</button>
+                    </div>
+                );
+            }
 
             // ポケモン選択画面
             if (selectedTM && !selectedPokemon) {
@@ -890,14 +925,17 @@
                 );
             }
 
-            // 技入れ替え画面
-            if (selectedPokemon && !message) {
+            // 技入れ替え画面（4技あるときのみ）
+            if (selectedPokemon) {
                 const moves = selectedPokemon.moves || [];
-                if (moves.length < 4) {
-                    // 4つ未満ならそのまま覚える
-                    onUseTM?.(selectedTM, selectedPokemon.id, null);
-                    setMessage(`${selectedPokemon.name}は ${tmItem.moveName}を おぼえた！`);
-                    return null;
+                // 4技未満は useEffect が処理中 → ローディング表示で黒画面回避
+                if (moves.length < 4 || learning) {
+                    return (
+                        <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                            <div className="text-6xl mb-4 animate-pulse">💿</div>
+                            <p className="text-xl text-yellow-400">おぼえています...</p>
+                        </div>
+                    );
                 }
                 return (
                     <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6">
@@ -910,9 +948,11 @@
                         <p className="text-sm text-red-400 mb-3">わざが いっぱいです！ わすれる わざを えらんでください</p>
                         <div className="space-y-2">
                             {moves.map((move, idx) => (
-                                <button key={idx} onClick={() => {
-                                    onUseTM?.(selectedTM, selectedPokemon.id, idx);
+                                <button key={idx} onClick={async () => {
+                                    setLearning(true);
+                                    await onUseTM?.(selectedTM, selectedPokemon.id, idx);
                                     setMessage(`${selectedPokemon.name}は ${move.name}を わすれて\n${tmItem.moveName}を おぼえた！`);
+                                    setLearning(false);
                                 }}
                                     className="w-full p-3 rounded-xl bg-slate-700 hover:bg-red-900 border-2 border-slate-600 hover:border-red-400 text-left transition-all">
                                     <div className="font-bold">{move.name}</div>
@@ -920,18 +960,6 @@
                                 </button>
                             ))}
                         </div>
-                    </div>
-                );
-            }
-
-            // 完了メッセージ
-            if (message) {
-                return (
-                    <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
-                        <div className="text-6xl mb-4">💿</div>
-                        <p className="text-xl text-yellow-400 whitespace-pre-line mb-6">{message}</p>
-                        <button onClick={() => { setMessage(null); setSelectedTM(null); setSelectedPokemon(null); }}
-                            className="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl font-bold border-2 border-blue-400">OK</button>
                     </div>
                 );
             }
@@ -1883,9 +1911,126 @@
             </div>
         );
 
+        // ===== 技習得画面 =====
+        const LearnMoveScreen = ({ pokemon, pendingMoves, onConsume, onComplete }) => {
+            const [idx, setIdx] = useState(0);
+            const [stage, setStage] = useState('intro'); // intro | forget | learned
+            const [lastMessage, setLastMessage] = useState('');
+            const [busy, setBusy] = useState(false);
+
+            const moveName = pendingMoves[idx];
+            const moveData = moveName ? MOVES_DATA[moveName] : null;
+
+            // 次の技に進むか完了するか
+            const proceed = () => {
+                if (idx + 1 >= pendingMoves.length) {
+                    onComplete();
+                } else {
+                    setIdx(idx + 1);
+                    setStage('intro');
+                    setLastMessage('');
+                }
+            };
+
+            // introの時点でそのまま自動覚え可能ならauto-learn
+            useEffect(() => {
+                if (stage !== 'intro' || !pokemon || !moveName || busy) return;
+                const moves = pokemon.moves || [];
+                // 既に覚えている
+                if (moves.some(m => m.name === moveName)) {
+                    setLastMessage(`${pokemon.name}は すでに ${moveName}を おぼえている`);
+                    setStage('learned');
+                    return;
+                }
+                if (moves.length < 4) {
+                    setBusy(true);
+                    (async () => {
+                        await onConsume(moveName, null);
+                        setLastMessage(`${pokemon.name}は\n${moveName}を おぼえた！`);
+                        setStage('learned');
+                        setBusy(false);
+                    })();
+                } else {
+                    // 4技あり → 忘れる技を選択
+                    setStage('forget');
+                }
+            }, [stage, pokemon, moveName, busy, onConsume]);
+
+            if (!moveName || !pokemon) {
+                // 安全策：データがなければ完了
+                return (
+                    <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                        <button onClick={onComplete} className="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl font-bold border-2 border-blue-400">つづける</button>
+                    </div>
+                );
+            }
+
+            // 技入れ替え画面
+            if (stage === 'forget') {
+                const moves = pokemon.moves || [];
+                return (
+                    <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6">
+                        <h2 className="text-xl text-yellow-400 mb-2">✨ あたらしい わざ！</h2>
+                        <p className="text-sm text-slate-300 mb-1">{pokemon.name}は <span className="text-yellow-400 font-bold">{moveName}</span>を おぼえたい！</p>
+                        {moveData && <p className="text-xs text-slate-400 mb-3">{TYPE_NAME_JP[moveData.type]} 威力:{moveData.power || '-'} 命中:{moveData.acc}</p>}
+                        <p className="text-sm text-red-400 mb-3 whitespace-pre-line">でも すでに 4つ わざを おぼえている。{"\n"}どの わざを わすれさせる？</p>
+                        <div className="space-y-2">
+                            {moves.map((move, fIdx) => (
+                                <button key={fIdx}
+                                    disabled={busy}
+                                    onClick={async () => {
+                                        setBusy(true);
+                                        await onConsume(moveName, fIdx);
+                                        setLastMessage(`${pokemon.name}は ${move.name}を わすれて\n${moveName}を おぼえた！`);
+                                        setStage('learned');
+                                        setBusy(false);
+                                    }}
+                                    className="w-full p-3 rounded-xl bg-slate-700 hover:bg-red-900 border-2 border-slate-600 hover:border-red-400 text-left transition-all disabled:opacity-50">
+                                    <div className="font-bold">{move.name}</div>
+                                    <div className="text-xs text-slate-400">{TYPE_NAME_JP[move.type]} 威力:{move.power || '-'} 命中:{move.acc}</div>
+                                </button>
+                            ))}
+                            <button
+                                disabled={busy}
+                                onClick={() => {
+                                    setLastMessage(`${pokemon.name}は ${moveName}を おぼえるのを あきらめた`);
+                                    setStage('learned');
+                                }}
+                                className="w-full p-3 rounded-xl bg-slate-600 hover:bg-slate-500 border-2 border-slate-500 hover:border-yellow-400 text-center transition-all disabled:opacity-50">
+                                あたらしい わざを おぼえない
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 学習結果表示
+            if (stage === 'learned') {
+                return (
+                    <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                        <div className="text-6xl mb-4">✨</div>
+                        <p className="text-xl text-yellow-400 whitespace-pre-line mb-6">{lastMessage}</p>
+                        <button onClick={proceed}
+                            className="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl font-bold border-2 border-blue-400">
+                            {idx + 1 >= pendingMoves.length ? 'つづける' : 'つぎへ'}
+                        </button>
+                    </div>
+                );
+            }
+
+            // 処理中（intro）
+            return (
+                <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-12 text-center">
+                    <div className="text-6xl mb-4 animate-pulse">✨</div>
+                    <p className="text-xl text-yellow-400">{pokemon.name}が なにかを おぼえそうだ...</p>
+                </div>
+            );
+        };
+
         // ===== トレーナー登場画面（本物のポケモンゲーム風） =====
         const TrainerIntroScreen = ({ trainer, trainerId, onBattle }) => {
             const [phase, setPhase] = useState(0); // 0: 登場, 1: セリフ, 2: バトルへ
+            const [imgError, setImgError] = useState(false);
             const trainerImage = trainer.image || TrainerSprites[trainer.type] || '';
 
             useEffect(() => {
@@ -1896,28 +2041,29 @@
             }, []);
 
             return (
-                <div className="bg-black rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel overflow-hidden relative"
+                <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel overflow-hidden relative"
                     style={{ minHeight: '400px' }}
                     onClick={() => { if (phase >= 1) onBattle(); }}>
                     {/* 背景エフェクト - 斜めストライプ（ポケモン風） */}
                     <div className="absolute inset-0 overflow-hidden">
                         <div className="absolute inset-0" style={{
-                            background: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.03) 20px, rgba(255,255,255,0.03) 40px)'
+                            background: 'repeating-linear-gradient(45deg, rgba(15,23,42,0.6), rgba(15,23,42,0.6) 20px, rgba(51,65,85,0.6) 20px, rgba(51,65,85,0.6) 40px)'
                         }}></div>
                         {/* スポットライト */}
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-96"
-                            style={{ background: 'radial-gradient(ellipse at center top, rgba(255,200,50,0.15) 0%, transparent 70%)' }}></div>
+                            style={{ background: 'radial-gradient(ellipse at center top, rgba(255,200,50,0.25) 0%, transparent 70%)' }}></div>
                     </div>
 
                     <div className="relative z-10 flex flex-col items-center justify-center p-6" style={{ minHeight: '400px' }}>
                         {/* トレーナー画像 */}
                         <div className={`transition-all duration-700 ${phase >= 0 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-                            {trainerImage ? (
+                            {trainerImage && !imgError ? (
                                 <img src={trainerImage} alt={trainer.name}
+                                    onError={() => setImgError(true)}
                                     className="w-40 h-40 object-contain mb-4 drop-shadow-lg"
                                     style={{ imageRendering: 'pixelated', filter: 'drop-shadow(0 0 10px rgba(255,200,50,0.5))' }} />
                             ) : (
-                                <div className="w-40 h-40 mb-4 flex items-center justify-center text-6xl">👤</div>
+                                <div className="w-40 h-40 mb-4 flex items-center justify-center text-6xl bg-slate-700 rounded-full border-4 border-yellow-400">👤</div>
                             )}
                         </div>
 
@@ -2441,6 +2587,10 @@
                 const team = getTeam();
                 const nextIndex = trainerTeamIndex + 1;
 
+                // レベルアップで新しく覚える技（進化時は進化技に置き換わるのでスキップ）
+                const pendingLearnMoves = (!evolvedTo && updated.newMoves && updated.newMoves.length > 0)
+                    ? updated.newMoves : [];
+
                 if (team && nextIndex < team.length) {
                     // まだ次のポケモンがいる → 次のバトルへ（勝ったポケモンで続行）
                     setBattleActivePokemonId(lead.id);
@@ -2454,7 +2604,9 @@
                         expGained,
                         leveledUp: updated.leveledUp,
                         pokemon: { ...lead, level: updated.level },
+                        pokemonId: lead.id,
                         evolvedTo: evolvedTo ? POKEMON_DATA[evolvedTo]?.name : null,
+                        pendingLearnMoves,
                         nextPokemonName: nextPokemon.name
                     });
                     setScreen('battle_result');
@@ -2520,8 +2672,10 @@
                     expGained,
                     leveledUp: updated.leveledUp,
                     pokemon: { ...lead, level: updated.level },
+                    pokemonId: lead.id,
                     evolvedTo: evolvedTo ? POKEMON_DATA[evolvedTo]?.name : null,
                     evolvedToId: evolvedTo,
+                    pendingLearnMoves,
                     badgeInfo,
                     trainerAfter
                 });
@@ -2566,7 +2720,13 @@
                         currentHp: Math.min(battleHp, newMaxHp)
                     });
                     await reloadData(playerId);
-                    setBattleResult({ result: 'caught', expGained, leveledUp: updated.leveledUp, pokemon: { ...lead, level: updated.level } });
+                    setBattleResult({
+                        result: 'caught', expGained,
+                        leveledUp: updated.leveledUp,
+                        pokemon: { ...lead, level: updated.level },
+                        pokemonId: lead.id,
+                        pendingLearnMoves: (updated.newMoves || [])
+                    });
                 } else {
                     await reloadData(playerId);
                     setBattleResult({ result: 'caught', expGained: 0 });
@@ -2578,6 +2738,12 @@
                 // 進化がある場合 → 進化演出画面へ
                 if (battleResult?.evolvedToId && battleResult?.evolvedTo) {
                     setScreen('evolution');
+                    return;
+                }
+
+                // 新しく覚える技がある場合 → 技習得画面へ
+                if (battleResult?.pendingLearnMoves && battleResult.pendingLearnMoves.length > 0) {
+                    setScreen('learn_move');
                     return;
                 }
 
@@ -2605,6 +2771,22 @@
                 goBack();
                 const prev = screenHistory.current.pop();
                 if (prev) setScreen(prev);
+            };
+
+            // 技習得処理：1つ学習して残りを返す（全完了時に続行ハンドラ実行）
+            const consumeLearnMove = async (moveName, forgetIdx) => {
+                if (!battleResult?.pokemonId) return;
+                const pokemon = allPokemons.find(p => p.id === battleResult.pokemonId);
+                if (pokemon && moveName && MOVES_DATA[moveName]) {
+                    const moves = [...(pokemon.moves || [])];
+                    if (forgetIdx != null && forgetIdx >= 0 && forgetIdx < 4) {
+                        moves[forgetIdx] = { name: moveName, ...MOVES_DATA[moveName] };
+                    } else if (moves.length < 4) {
+                        moves.push({ name: moveName, ...MOVES_DATA[moveName] });
+                    }
+                    await Repo.updatePokemon(battleResult.pokemonId, { moves });
+                    await reloadData(playerId);
+                }
             };
 
             const handleBuy = async (itemKey) => {
@@ -2737,7 +2919,15 @@
                     if (!lead) lead = party.find(p => p.currentHp > 0);
                     // それでもいなければparty[0]
                     if (!lead) lead = party[0];
-                    if (!lead || !battleOpponent) return null;
+                    if (!lead || !battleOpponent) {
+                        // ローディング表示で黒画面を回避
+                        return (
+                            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-12 text-center">
+                                <div className="text-6xl mb-4 animate-pulse">⚔️</div>
+                                <p className="text-xl text-yellow-400">バトル じゅんび ちゅう...</p>
+                            </div>
+                        );
+                    }
                     return <BattleScreen
                         playerPokemon={lead}
                         opponentPokemon={battleOpponent}
@@ -2765,13 +2955,65 @@
 
                 case 'trainer_intro': {
                     const trainer = Trainers[battleTrainerId];
-                    if (!trainer) { setScreen('world_map'); return null; }
+                    if (!trainer) {
+                        // 不正な状態。setScreen を effect 的に次レンダーで呼ぶのではなく、
+                        // フォールバック画面を表示して黒画面を回避
+                        return (
+                            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                                <p className="text-yellow-400 mb-4">トレーナーが みつかりません</p>
+                                <button onClick={() => setScreen(currentMapId ? 'rpg_map' : 'world_map')}
+                                    className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-bold border-2 border-blue-400">もどる</button>
+                            </div>
+                        );
+                    }
                     return <TrainerIntroScreen trainer={trainer} trainerId={battleTrainerId}
                         onBattle={handleTrainerIntroBattle} />;
                 }
 
                 case 'battle_result':
                     return <BattleResultScreen {...battleResult} onContinue={handleBattleResultContinue} />;
+
+                case 'learn_move': {
+                    const lmPokemon = allPokemons.find(p => p.id === battleResult?.pokemonId);
+                    const pending = battleResult?.pendingLearnMoves || [];
+                    if (!lmPokemon || pending.length === 0) {
+                        // 安全策：データ不整合時は続行
+                        return (
+                            <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-6 text-center">
+                                <button onClick={() => {
+                                    setBattleResult(prev => ({ ...prev, pendingLearnMoves: [] }));
+                                    handleBattleResultContinue();
+                                }} className="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl font-bold border-2 border-blue-400">つづける</button>
+                            </div>
+                        );
+                    }
+                    return <LearnMoveScreen
+                        pokemon={lmPokemon}
+                        pendingMoves={pending}
+                        onConsume={consumeLearnMove}
+                        onComplete={() => {
+                            // pendingをクリアして次の遷移へ
+                            setBattleResult(prev => ({ ...prev, pendingLearnMoves: [] }));
+                            // 次の遷移は evolution / next battle / elite / map に分岐
+                            if (battleResult?.evolvedToId && battleResult?.evolvedTo) {
+                                setScreen('evolution');
+                            } else if (battleResult?.result === 'next') {
+                                setScreen('battle');
+                            } else if (battleType === 'elite' && battleResult?.result === 'win') {
+                                if (eliteIndex < EliteFour.length) {
+                                    setEliteIndex(eliteIndex + 1);
+                                    setScreen('elite_intro');
+                                } else {
+                                    setScreen('ending');
+                                }
+                            } else if (currentMapId && window.Game.Data.Maps[currentMapId]) {
+                                setScreen('rpg_map');
+                            } else {
+                                setScreen('world_map');
+                            }
+                        }}
+                    />;
+                }
 
                 case 'evolution':
                     if (!battleResult?.evolvedToId || !battleResult?.evolvedTo) { setScreen('world_map'); return null; }

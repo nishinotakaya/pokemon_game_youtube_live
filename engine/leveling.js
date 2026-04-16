@@ -17,7 +17,7 @@ window.Game.Leveling = {
 
     // 経験値を加算してレベルアップ判定
     addExp(pokemon, expGain) {
-        if (pokemon.level >= this.MAX_LEVEL) return { ...pokemon, leveledUp: false, levelsGained: 0 };
+        if (pokemon.level >= this.MAX_LEVEL) return { ...pokemon, leveledUp: false, levelsGained: 0, newMoves: [] };
 
         let newExp = pokemon.exp + expGain;
         let newLevel = pokemon.level;
@@ -34,6 +34,24 @@ window.Game.Leveling = {
 
         const newStats = levelsGained > 0 ? this.calcStatsForLevel(pokemon, newLevel) : {};
 
+        // レベルアップで新しく覚える技を判定
+        const newMoves = [];
+        if (levelsGained > 0 && typeof getLearnset === 'function') {
+            const learnset = getLearnset(pokemon.masterId);
+            for (let lv = pokemon.level + 1; lv <= newLevel; lv++) {
+                const moveName = learnset[lv];
+                if (moveName && typeof MOVES_DATA !== 'undefined' && MOVES_DATA[moveName]) {
+                    // 既に覚えている技はスキップ
+                    const already = (pokemon.moves || []).some(m =>
+                        (typeof m === 'string' ? m : m.name) === moveName
+                    );
+                    if (!already && !newMoves.includes(moveName)) {
+                        newMoves.push(moveName);
+                    }
+                }
+            }
+        }
+
         return {
             ...pokemon,
             ...newStats,
@@ -41,7 +59,8 @@ window.Game.Leveling = {
             exp: newExp,
             leveledUp: levelsGained > 0,
             levelsGained,
-            previousLevel: pokemon.level
+            previousLevel: pokemon.level,
+            newMoves
         };
     },
 
