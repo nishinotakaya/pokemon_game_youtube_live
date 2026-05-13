@@ -2250,6 +2250,21 @@
                 })();
             }, []);
 
+            // battle 画面で前提データが欠けたまま固まらないように自動復帰
+            useEffect(() => {
+                if (screen !== 'battle') return;
+                const hasLead = (party || []).some(p => p.currentHp > 0) || (party && party.length > 0);
+                if (battleOpponent && hasLead) return;
+                const t = setTimeout(() => {
+                    if (currentMapId && window.Game.Data.Maps[currentMapId]) {
+                        setScreen('rpg_map');
+                    } else {
+                        setScreen('world_map');
+                    }
+                }, 1500);
+                return () => clearTimeout(t);
+            }, [screen, battleOpponent, party, currentMapId]);
+
             // データリロード
             const reloadData = async (pid) => {
                 const p = await Repo.getPlayer(pid);
@@ -2925,11 +2940,16 @@
                     // それでもいなければparty[0]
                     if (!lead) lead = party[0];
                     if (!lead || !battleOpponent) {
-                        // ローディング表示で黒画面を回避
+                        // 前提データが欠けた → useEffect で自動復帰するが、押せる手動ボタンも用意
+                        const backTo = (currentMapId && window.Game.Data.Maps[currentMapId]) ? 'rpg_map' : 'world_map';
                         return (
                             <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-12 text-center">
                                 <div className="text-6xl mb-4 animate-pulse">⚔️</div>
-                                <p className="text-xl text-yellow-400">バトル じゅんび ちゅう...</p>
+                                <p className="text-xl text-yellow-400 mb-6">バトル じゅんび ちゅう...</p>
+                                <button onClick={() => setScreen(backTo)}
+                                    className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-8 py-3 rounded-xl font-bold border-2 border-blue-400 text-white">
+                                    マップに もどる
+                                </button>
                             </div>
                         );
                     }
