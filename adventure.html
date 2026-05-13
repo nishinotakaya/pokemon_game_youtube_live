@@ -49,6 +49,15 @@
 <body class="min-h-screen flex items-center justify-center p-2 md:p-4">
     <div id="root" class="w-full max-w-2xl"></div>
 
+    <script>
+        // iOS Safari の BFCache 復元時は強制リロードする
+        // （前回セッションの React state（例: screen='battle'）が復元されて
+        //  「バトル じゅんび ちゅう...」のまま固まる問題を回避）
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) window.location.reload();
+        });
+    </script>
+
     <script type="text/babel">
         const { useState, useEffect, useRef, useCallback } = React;
         const Repo = window.Game.Repository;
