@@ -1,5 +1,5 @@
 // Battle Engine Tests
-const { expect } = chai;
+var { expect } = chai; // 複数テストファイル間で再宣言可能にするため var
 
 describe('BattleEngine', () => {
     const BE = window.Game.BattleEngine;

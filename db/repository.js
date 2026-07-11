@@ -4,31 +4,33 @@ window.Game = window.Game || {};
 window.Game.Repository = {
     // === プレイヤー ===
     async createPlayer(name) {
-        const id = await window.Game.DB.players.add({
-            name,
-            money: 3000,
-            createdAt: new Date().toISOString()
+        return window.Game.DB.transaction('rw', window.Game.DB.players, window.Game.DB.storyProgress, window.Game.DB.playerItems, async () => {
+            const id = await window.Game.DB.players.add({
+                name,
+                money: 3000,
+                createdAt: new Date().toISOString()
+            });
+            // ストーリー進行データも作成
+            await window.Game.DB.storyProgress.add({
+                playerId: id,
+                currentTown: 'masara_town',
+                badges: [],
+                flags: {},
+                defeatedTrainers: []
+            });
+            // 初期アイテム
+            await window.Game.DB.playerItems.add({
+                playerId: id,
+                itemKey: 'pokeball',
+                quantity: 5
+            });
+            await window.Game.DB.playerItems.add({
+                playerId: id,
+                itemKey: 'potion',
+                quantity: 3
+            });
+            return id;
         });
-        // ストーリー進行データも作成
-        await window.Game.DB.storyProgress.add({
-            playerId: id,
-            currentTown: 'masara_town',
-            badges: [],
-            flags: {},
-            defeatedTrainers: []
-        });
-        // 初期アイテム
-        await window.Game.DB.playerItems.add({
-            playerId: id,
-            itemKey: 'pokeball',
-            quantity: 5
-        });
-        await window.Game.DB.playerItems.add({
-            playerId: id,
-            itemKey: 'potion',
-            quantity: 3
-        });
-        return id;
     },
 
     async getPlayer(id) {
@@ -39,21 +41,23 @@ window.Game.Repository = {
         return window.Game.DB.players.toArray();
     },
 
-    async updatePlayerMoney(playerId, amount) {
+    async updatePlayerMoney(playerId, newTotal) {
         await window.Game.DB.players.update(playerId, {
-            money: amount
+            money: newTotal
         });
     },
 
     async deletePlayer(id) {
-        await window.Game.DB.players.delete(id);
-        await window.Game.DB.ownedPokemons.where('playerId').equals(id).delete();
-        await window.Game.DB.storyProgress.where('playerId').equals(id).delete();
-        await window.Game.DB.playerItems.where('playerId').equals(id).delete();
-        await window.Game.DB.battleLogs.where('playerId').equals(id).delete();
+        await window.Game.DB.transaction('rw', window.Game.DB.players, window.Game.DB.ownedPokemons, window.Game.DB.storyProgress, window.Game.DB.playerItems, window.Game.DB.battleLogs, async () => {
+            await window.Game.DB.players.delete(id);
+            await window.Game.DB.ownedPokemons.where('playerId').equals(id).delete();
+            await window.Game.DB.storyProgress.where('playerId').equals(id).delete();
+            await window.Game.DB.playerItems.where('playerId').equals(id).delete();
+            await window.Game.DB.battleLogs.where('playerId').equals(id).delete();
+        });
     },
 
-    // === 手持ち���ケモン ===
+    // === 手持ちポケモン ===
     async addOwnedPokemon(playerId, pokemonData) {
         // パーティの数を確認（最大6匹）
         const partyCount = await window.Game.DB.ownedPokemons

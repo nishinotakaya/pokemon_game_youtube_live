@@ -27,6 +27,13 @@ const MOVES_DATA = {
   // バサギリの技
   "エアスラッシュ": { power: 75, acc: 95, type: "flying" },
 
+  // ズバット系の技
+  "つばさでうつ": { power: 60, acc: 100, type: "flying" },
+  "きゅうけつ": { power: 80, acc: 100, type: "bug", effect: "drain" },
+
+  // カビゴンの技
+  "のしかかり": { power: 85, acc: 100, type: "normal" },
+
   // レックウザの技
   "りゅうせいぐん": { power: 130, acc: 90, type: "dragon", effect: "dragon_meteor" },
   "かみなり": { power: 110, acc: 70, type: "electric" },
@@ -141,7 +148,6 @@ const MOVES_DATA = {
 
   // ボーマンダの技
   "りゅうのまい": { power: 0, acc: 100, type: "dragon", status: "atk_up" },
-  "そらをとぶ": { power: 90, acc: 95, type: "flying" },
 
   // メタグロスの技
   "コメットパンチ": { power: 100, acc: 90, type: "steel", effect: "iron_head" },

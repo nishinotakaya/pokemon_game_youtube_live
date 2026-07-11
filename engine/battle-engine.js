@@ -14,7 +14,8 @@ window.Game.BattleEngine = {
 
     // ダメージ計算
     calcDamage(move, attacker, defender, isMega) {
-        const typeModifier = (TYPE_CHART[move.type]?.[defender.type] || 1.0) * (move.type === attacker.type ? 1.5 : 1.0);
+        // ?? を使う: || だと無効相性の 0 が 1.0 扱いになってしまう
+        const typeModifier = (TYPE_CHART[move.type]?.[defender.type] ?? 1.0) * (move.type === attacker.type ? 1.5 : 1.0);
         const megaMultiplier = isMega ? 1.5 : 1.0;
         const levelMultiplier = 1 + (attacker.level || 50) * 0.01;
         const atkBoost = attacker.atkBoost || 1;

@@ -1,5 +1,5 @@
 // Leveling System Tests
-const { expect } = chai;
+var { expect } = chai; // 複数テストファイル間で再宣言可能にするため var
 
 describe('Leveling', () => {
     const L = window.Game.Leveling;

@@ -155,7 +155,6 @@
             const megaLucarioFrontImageRef = useRef(null); // メガルカリオ表画像用（CPU用）
             const particles = useRef([]);
             const ballAnimRef = useRef({ active: false, progress: 0, status: 'none', shakeCount: 0 });
-            const beamProgressRef = useRef(0);
             const audioRef = useRef(null);
             const audioContextRef = useRef(null);
 
@@ -440,7 +439,6 @@
                 setTurn(firstTurn);
                 setOver(false);
                 ballAnimRef.current = { active: false, progress: 0, status: 'none', shakeCount: 0 };
-                beamProgressRef.current = 0;
             };
 
             const tryCatch = async () => {
@@ -455,10 +453,13 @@
                 ballAnimRef.current.status = 'shaking';
                 const catchChance = (1 - (p2.curHp / p2.hp)) * 0.7 + 0.15;
                 const isSuccess = Math.random() < catchChance;
+                // 失敗時に何回目の揺れで抜け出すかは先に1回だけ抽選する
+                // （ループ内で毎回抽選すると一度も一致せず失敗のはずが捕獲成功になることがある）
+                const escapeShakeIndex = Math.floor(Math.random() * 3) + 1;
 
                 for (let i = 1; i <= 3; i++) {
                     await new Promise(r => setTimeout(r, 700));
-                    if (!isSuccess && i === Math.floor(Math.random() * 3) + 1) {
+                    if (!isSuccess && i === escapeShakeIndex) {
                         ballAnimRef.current.active = false;
                         addLog(`だめだ！ ${p2.name}は ボールから ぬけだした！`);
                         triggerShake(5);
@@ -493,16 +494,15 @@
                 if (attacker.poisoned) {
                     const poisonDamage = Math.max(1, Math.floor(attacker.hp * 0.125)); // HPの1/8のダメージ
                     addLog(`${attacker.name}は どくの ダメージを うけた！`);
-                    setAttacker(prev => {
-                        const newHp = Math.max(0, prev.curHp - poisonDamage);
-                        if (newHp <= 0) {
-                            setOver(isP1 ? 'lose' : 'win');
-                        }
-                        return { ...prev, curHp: newHp };
-                    });
+                    // over は古いクロージャ値のため、ひんし判定はローカルで持つ
+                    const faintedByPoison = attacker.curHp - poisonDamage <= 0;
+                    setAttacker(prev => ({ ...prev, curHp: Math.max(0, prev.curHp - poisonDamage) }));
+                    if (faintedByPoison) {
+                        setOver(isP1 ? 'lose' : 'win');
+                    }
                     triggerShake(5);
                     await new Promise(r => setTimeout(r, 600));
-                    if (over) {
+                    if (faintedByPoison) {
                         setBusy(false);
                         return;
                     }
@@ -541,6 +541,8 @@
                 }
 
                 const hit = Math.random() * 100 <= move.acc;
+                // over / p1.curHp / p2.curHp は古いクロージャ値のため、このターンのKOはローカルで持つ
+                let defenderFainted = false;
 
                 if (!hit) {
                     addLog("しかし こうげきは はずれた！");
@@ -628,7 +630,6 @@
                         const targetX = isP1 ? w * 0.75 : w * 0.25;
                         const targetY = isP1 ? h * 0.25 : h * 0.7;
 
-                        beamProgressRef.current = 0;
                         setActiveEffect({
                             type: 'beam',
                             target: isP1 ? 'p2' : 'p1',
@@ -638,7 +639,6 @@
 
                         // ビームアニメーション（進行を更新）
                         for (let p = 0; p <= 1; p += 0.05) {
-                            beamProgressRef.current = p;
                             setActiveEffect(prev => prev ? { ...prev, progress: p } : null);
                             await new Promise(r => setTimeout(r, 30));
                         }
@@ -1425,32 +1425,33 @@
                     triggerShake(move.power > 70 ? 15 : 8);
                     await new Promise(r => setTimeout(r, 600));
 
-                    const modifier = (TYPE_CHART[move.type]?.[defender.type] || 1.0) * (move.type === attacker.type ? 1.5 : 1.0);
+                    // ?? を使う: || だと無効相性の 0 が 1.0 扱いになってしまう
+                    const modifier = (TYPE_CHART[move.type]?.[defender.type] ?? 1.0) * (move.type === attacker.type ? 1.5 : 1.0);
                     // メガ進化ポケモンの場合は攻撃力を1.5倍に
-                    const isMegaEvolved = isMegaPokemon(attacker.key);
+                    const isMegaEvolved = isMegaForm(attacker.key);
                     const megaMultiplier = isMegaEvolved ? 1.5 : 1.0;
                     const damage = Math.max(1, Math.floor(((move.power * 0.3) * modifier * (0.85 + Math.random() * 0.15) * attacker.atkBoost * megaMultiplier) / defender.defBoost));
 
                     if (isP1) setP2Action("hit"); else setP1Action("hit");
 
                     if (modifier > 1) addLog("こうかは ばつぐんだ！");
-                    if (modifier < 1) addLog("こうかは いまひとつの ようだ...");
+                    if (modifier < 1 && modifier > 0) addLog("こうかは いまひとつの ようだ...");
+                    if (modifier === 0) addLog("こうかが ないようだ...");
 
-                    setDefender(prev => {
-                        const newHp = Math.max(0, prev.curHp - damage);
-                        if (newHp <= 0) {
-                            if (isP1) {
-                                setOver('win');
-                                // 1Pモード時のみ進化チェック
-                                if (gameMode === '1p') {
-                                    checkEvolution(p1.key);
-                                }
-                            } else {
-                                setOver('lose');
+                    defenderFainted = defender.curHp - damage <= 0;
+                    setDefender(prev => ({ ...prev, curHp: Math.max(0, prev.curHp - damage) }));
+                    // 副作用（勝敗確定・進化チェック）は state updater の外で行う
+                    if (defenderFainted) {
+                        if (isP1) {
+                            setOver('win');
+                            // 1Pモード時のみ進化チェック
+                            if (gameMode === '1p') {
+                                checkEvolution(p1.key);
                             }
+                        } else {
+                            setOver('lose');
                         }
-                        return { ...prev, curHp: newHp };
-                    });
+                    }
 
                     await new Promise(r => setTimeout(r, 400));
                     setP1Action("idle"); setP2Action("idle");
@@ -1458,7 +1459,7 @@
 
                 setActiveEffect(null);
                 await new Promise(r => setTimeout(r, 400));
-                if (!over && (isP1 ? p2.curHp > 0 : p1.curHp > 0)) {
+                if (!defenderFainted) {
                     setTurn(isP1 ? "cpu" : "player");
                 }
                 setBusy(false);
@@ -2240,15 +2241,14 @@
                         </div>
                     );
                 }
-                if (over && !evolutionComplete) {
+                // 進化演出中はオーバーレイを出さない（bg-black/80 がキャンバスの演出を覆ってしまうため）
+                if (over && !evolutionComplete && !evolutionEffect) {
                     return (
                         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white p-4 z-20">
                             <h2 className="text-4xl md:text-5xl font-black mb-6 font-pixel text-yellow-400 italic text-center">
                                 {gameMode === '2p' ? (over === 'win' ? "1P の 勝利！" : "2P の 勝利！") : (over === 'win' ? "勝利！" : over === 'caught' ? "つかまえた！" : "敗北...")}
                             </h2>
-                            {!evolutionEffect && (
-                                <button onClick={() => { setGameState('mode_select'); setBgmActive(false); setGameMode(null); }} className="bg-white text-slate-900 px-10 py-3 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel">タイトルに戻る</button>
-                            )}
+                            <button onClick={() => { setGameState('mode_select'); setBgmActive(false); setGameMode(null); }} className="bg-white text-slate-900 px-10 py-3 rounded-full font-bold hover:bg-yellow-400 transition-all shadow-xl font-pixel">タイトルに戻る</button>
                         </div>
                     );
                 }

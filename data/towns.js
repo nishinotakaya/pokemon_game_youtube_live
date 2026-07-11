@@ -140,7 +140,8 @@ window.Game.Data.Routes = {
             { pokemon: 'gastly', weight: 5, levelRange: [5, 8] },
             { pokemon: 'lucario_riolu', weight: 5, levelRange: [6, 9] },
             { pokemon: 'eevee', weight: 5, levelRange: [5, 8] },
-            { pokemon: 'scyther', weight: 3, levelRange: [7, 10] }
+            { pokemon: 'scyther', weight: 3, levelRange: [7, 10] },
+            { pokemon: 'zubat', weight: 10, levelRange: [4, 7] }
         ],
         trainers: ['youngster_2', 'bug_catcher_1']
     },
@@ -263,7 +264,9 @@ window.Game.Data.Routes = {
             { pokemon: 'chandelure', weight: 6, levelRange: [26, 34] },
             { pokemon: 'darkrai', weight: 4, levelRange: [28, 38] },
             { pokemon: 'giratina', weight: 3, levelRange: [30, 40] },
-            { pokemon: 'absol', weight: 5, levelRange: [25, 33] }
+            { pokemon: 'absol', weight: 5, levelRange: [25, 33] },
+            { pokemon: 'zubat', weight: 12, levelRange: [22, 30] },
+            { pokemon: 'golbat', weight: 6, levelRange: [26, 32] }
         ],
         trainers: ['medium_2', 'medium_3']
     },
@@ -324,21 +327,18 @@ window.Game.Data.Evolutions = {
     magikarp:    { evolvedId: 'gyarados',   levelRequired: 20 },
     // リオル
     lucario_riolu: { evolvedId: 'lucario',  levelRequired: 22 },
-    // ニドラン
-    nidoking:    { evolvedId: 'nidoking',   levelRequired: 99 }, // 既に最終
-    nidoqueen:   { evolvedId: 'nidoqueen',  levelRequired: 99 },
     // ストライク→ハッサム
     scyther:     { evolvedId: 'scizor',     levelRequired: 20 },
-    // ドラゴン系
-    garchomp:    { evolvedId: 'garchomp',   levelRequired: 99 },
-    dragonite:   { evolvedId: 'dragonite',  levelRequired: 99 },
-    salamence:   { evolvedId: 'salamence',  levelRequired: 99 },
+    // ズバット→ゴルバット→クロバット
+    zubat:       { evolvedId: 'golbat',     levelRequired: 22 },
+    golbat:      { evolvedId: 'crobat',     levelRequired: 35 },
     // メガ進化（高レベル）
     charizard:   { evolvedId: 'mega_charizard',  levelRequired: 50 },
     rayquaza:    { evolvedId: 'mega_rayquaza',   levelRequired: 55 },
     lucario:     { evolvedId: 'mega_lucario',    levelRequired: 45 },
     scizor:      { evolvedId: 'mega_scizor',     levelRequired: 45 },
     gengar:      { evolvedId: 'gengar_mega',     levelRequired: 45 },
+    mewtwo:      { evolvedId: 'mega_mewtwo_x',   levelRequired: 50 },
     // 追加ポケモン進化
     togetic:     { evolvedId: 'togekiss',   levelRequired: 30 },
 };

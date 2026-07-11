@@ -104,6 +104,8 @@ window.Game.Leveling = {
                     return choices[Math.floor(Math.random() * choices.length)];
                 }
             }
+            // 自己参照（既に最終進化形など）は進化なし扱いにする
+            if (evolutionData.evolvedId === pokemon.masterId) return null;
             return evolutionData.evolvedId;
         }
         return null;

@@ -352,8 +352,12 @@ const getMegaPokemonImageUrl = (key, megaScizorFrontImageUrl) => {
   return null;
 };
 
-// メガポケモンかどうかをチェック
+// 専用画像・特殊描画を持つメガポケモンかどうかをチェック（描画処理用）
 const isMegaPokemon = (key) => {
   return key === 'mega_charizard' || key === 'mega_rayquaza' || key === 'mega_lucario' || key === 'mega_scizor';
 };
+
+// メガシンカ形態かどうかをチェック（ダメージ1.5倍の判定用。専用描画の有無とは独立）
+const MEGA_FORM_KEYS = ['mega_charizard', 'mega_rayquaza', 'mega_lucario', 'mega_scizor', 'mega_mewtwo_x', 'gengar_mega'];
+const isMegaForm = (key) => MEGA_FORM_KEYS.includes(key);
 

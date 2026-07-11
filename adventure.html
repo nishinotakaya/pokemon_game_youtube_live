@@ -141,7 +141,7 @@
                     <button onClick={onNewGame}
                         className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-5 rounded-2xl font-bold text-xl transition-all border-4 border-blue-400 hover:border-yellow-400 shadow-lg active:translate-y-1">
                         はじめから
-                        <div className="text-xs text-blue-200 mt-1">���たらしい ぼうけん</div>
+                        <div className="text-xs text-blue-200 mt-1">あたらしい ぼうけん</div>
                     </button>
                     {hasSaveData && (
                         <button onClick={onContinue}
@@ -153,7 +153,7 @@
                     <a href="index.html"
                         className="bg-slate-600 hover:bg-slate-500 text-white px-8 py-3 rounded-2xl font-bold text-center transition-all border-4 border-slate-500 hover:border-yellow-400">
                         クラシックバトル
-                        <div className="text-xs text-slate-300 mt-1">���トルだけ たのしむ</div>
+                        <div className="text-xs text-slate-300 mt-1">バトルだけ たのしむ</div>
                     </a>
                 </div>
             </div>
@@ -302,7 +302,6 @@
             const [isMoving, setIsMoving] = useState(false);
             const [dialogText, setDialogText] = useState(null);
             const [encounterFlash, setEncounterFlash] = useState(false);
-            const moveQueue = useRef([]);
             const defeatedTrainers = progress?.defeatedTrainers || [];
 
             // タイルが歩けるか判定
@@ -1057,6 +1056,15 @@
 
             const addLog = (msg) => setLogs(prev => [msg, ...prev].slice(0, 10));
 
+            // 相手ターンの予約。doAttackRef 経由で常に最新レンダーの doAttackWithAnim を呼ぶ
+            const doAttackRef = useRef(null);
+            const scheduleOpponentTurn = (delayMs = 800) => {
+                setTimeout(() => {
+                    const cpuMoveIndex = Math.floor(Math.random() * opponentPokemon.moves.length);
+                    doAttackRef.current(cpuMoveIndex, 'opponent');
+                }, delayMs);
+            };
+
             // Canvas バトル描画
             const battleCanvasRef = useRef(null);
             const p1ImgRef = useRef(new Image());
@@ -1371,7 +1379,7 @@
                     if (isPlayer) setOpponentBoosts(prev => ({ ...prev, poisoned: true }));
                     else setPlayerBoosts(prev => ({ ...prev, poisoned: true }));
                 } else {
-                    const isMega = typeof isMegaPokemon === 'function' && isMegaPokemon(attacker.masterId || '');
+                    const isMega = typeof isMegaForm === 'function' && isMegaForm(attacker.masterId || '');
                     const { damage, typeModifier } = BattleEngine.calcDamage(move, { ...attacker, level: attacker.level || 50 }, defender, isMega);
                     const effMsg = BattleEngine.getEffectivenessMessage(typeModifier);
                     if (effMsg) addLog(effMsg);
@@ -1448,15 +1456,16 @@
                 if (isPlayer) {
                     setTurn('opponent');
                     setBusy(false);
-                    setTimeout(() => {
-                        const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
-                        doAttackWithAnim(cpuMove, 'opponent');
-                    }, 800);
+                    scheduleOpponentTurn();
                 } else {
                     setTurn('player');
                     setBusy(false);
                 }
             };
+
+            // 最新レンダーの doAttackWithAnim を保持する。setTimeout が古いレンダーの
+            // クロージャを掴むと、直前に上げた defBoost などが相手の反撃に反映されないため
+            doAttackRef.current = doAttackWithAnim;
 
             // ポケモン入れ替え（1ターン消費）
             const switchPokemon = async (newPokemon) => {
@@ -1490,10 +1499,7 @@
                 // 相手のターン
                 setTurn('opponent');
                 setBusy(false);
-                setTimeout(() => {
-                    const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
-                    doAttackWithAnim(cpuMove, 'opponent');
-                }, 800);
+                scheduleOpponentTurn();
             };
 
             // バトル中アイテム使用（1ターン消費）
@@ -1518,17 +1524,15 @@
                 // 相手のターン
                 setTurn('opponent');
                 setBusy(false);
-                setTimeout(() => {
-                    const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
-                    doAttackWithAnim(cpuMove, 'opponent');
-                }, 800);
+                scheduleOpponentTurn();
             };
 
             // 回復アイテムだけフィルタ
             const healItems = playerItems.filter(pi => Items[pi.itemKey]?.type === 'heal' && pi.quantity > 0);
 
             const tryFlee = () => {
-                if (busy || battleOver) return;
+                // 相手ターン中の連打で CPU 攻撃が多重発火しないよう turn もガードする
+                if (turn !== 'player' || busy || battleOver) return;
                 if (battleType !== 'wild') {
                     addLog('トレーナーせんからは にげられない！');
                     return;
@@ -1540,10 +1544,7 @@
                 } else {
                     addLog('にげられなかった！');
                     setTurn('opponent');
-                    setTimeout(() => {
-                        const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
-                        doAttackWithAnim(cpuMove, 'opponent');
-                    }, 800);
+                    scheduleOpponentTurn();
                 }
             };
 
@@ -1578,10 +1579,7 @@
                         await new Promise(r => setTimeout(r, 600));
                         setTurn('opponent');
                         setBusy(false);
-                        setTimeout(() => {
-                            const cpuMove = Math.floor(Math.random() * opponentPokemon.moves.length);
-                            doAttackWithAnim(cpuMove, 'opponent');
-                        }, 800);
+                        scheduleOpponentTurn();
                         return;
                     }
                     ballAnimRef.current.shakeCount = i;
@@ -1754,8 +1752,8 @@
                                         </button>
                                     )}
                                     <button onClick={tryFlee}
-                                        disabled={busy || battleOver}
-                                        className="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-white border-2 border-slate-600 p-2 text-xs font-bold rounded-xl transition-all">
+                                        disabled={turn !== 'player' || busy || battleOver}
+                                        className="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-white border-2 border-slate-600 p-2 text-xs font-bold rounded-xl transition-all disabled:opacity-50">
                                         にげる
                                     </button>
                                 </div>
@@ -2215,7 +2213,7 @@
         const EndingScreen = ({ onTitle }) => (
             <div className="bg-slate-800 rounded-3xl border-4 border-slate-700 shadow-2xl text-white font-pixel p-8 text-center">
                 <h1 className="text-4xl text-yellow-400 mb-6">🏆 おめでとう！</h1>
-                <p className="text-xl mb-4">きみは あたらしい<br/>���ケモンリーグ チャンピオンだ！</p>
+                <p className="text-xl mb-4">きみは あたらしい<br/>ポケモンリーグ チャンピオンだ！</p>
                 <p className="text-slate-400 mb-8">すべての ジムリーダー、してんのう、<br/>チャンピオンを たおした！</p>
                 <button onClick={onTitle} className="bg-yellow-600 hover:bg-yellow-500 px-8 py-3 rounded-2xl font-bold text-xl border-4 border-yellow-400">タイトルに もどる</button>
             </div>
@@ -2262,8 +2260,10 @@
             // battle 画面で前提データが欠けたまま固まらないように自動復帰
             useEffect(() => {
                 if (screen !== 'battle') return;
-                const hasLead = (party || []).some(p => p.currentHp > 0) || (party && party.length > 0);
-                if (battleOpponent && hasLead) return;
+                // パーティが空/未ロードのときだけ復帰対象にする
+                // （HPは見ない: 全員ひんしのケースは通常の敗北フローに任せる）
+                const hasParty = !!(party && party.length > 0);
+                if (battleOpponent && hasParty) return;
                 const t = setTimeout(() => {
                     if (currentMapId && window.Game.Data.Maps[currentMapId]) {
                         setScreen('rpg_map');
@@ -2817,12 +2817,20 @@
                 }
             };
 
+            // 購入処理の二重実行ガード。所持金は「古い playerMoney - 価格」の絶対値で
+            // 上書き保存されるため、連打で並走すると1回分しか減らない
+            const buyingRef = useRef(false);
             const handleBuy = async (itemKey) => {
                 const item = Items[itemKey];
-                if (!item || playerMoney < item.price) return;
-                await Repo.updatePlayerMoney(playerId, playerMoney - item.price);
-                await Repo.addItem(playerId, itemKey, 1);
-                await reloadData(playerId);
+                if (!item || playerMoney < item.price || buyingRef.current) return;
+                buyingRef.current = true;
+                try {
+                    await Repo.updatePlayerMoney(playerId, playerMoney - item.price);
+                    await Repo.addItem(playerId, itemKey, 1);
+                    await reloadData(playerId);
+                } finally {
+                    buyingRef.current = false;
+                }
             };
 
             const handleHeal = async () => {

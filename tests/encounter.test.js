@@ -1,5 +1,5 @@
 // Encounter System Tests
-const { expect } = chai;
+var { expect } = chai; // 複数テストファイル間で再宣言可能にするため var
 
 describe('Encounter', () => {
     const E = window.Game.Encounter;

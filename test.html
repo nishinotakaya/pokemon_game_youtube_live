@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pokemon Adventure - Tests</title>
-    <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css">
+    <link rel="stylesheet" href="https://unpkg.com/mocha@10/mocha.css">
     <style>
         body { background: #1e293b; color: #e2e8f0; }
         #mocha { margin: 20px; }
@@ -23,8 +23,9 @@
     <div id="mocha"></div>
 
     <!-- Test Framework -->
-    <script src="https://unpkg.com/chai/chai.js"></script>
-    <script src="https://unpkg.com/mocha/mocha.js"></script>
+    <!-- chai は v5 以降 UMD ビルド(chai.js)が無いため v4 に固定。mocha も動作確認済みの v10 に固定 -->
+    <script src="https://unpkg.com/chai@4/chai.js"></script>
+    <script src="https://unpkg.com/mocha@10/mocha.js"></script>
 
     <!-- Game Data (required by engine) -->
     <script src="data/pokemon.js"></script>

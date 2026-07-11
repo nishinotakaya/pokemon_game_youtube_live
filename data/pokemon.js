@@ -119,6 +119,11 @@ const POKEMON_DATA = {
     baseHp: 115, baseAtk: 85, baseDef: 70, baseSpd: 75, growthRate: 1.0,
     color: "#4ade80", moves: ["エアスラッシュ", "シザークロス", "つばめがえし", "きあいだめ"]
   },
+  zubat: {
+    id: 41, name: "ズバット", type: "poison", hp: 70, speed: 55,
+    baseHp: 70, baseAtk: 45, baseDef: 35, baseSpd: 55, growthRate: 1.2,
+    color: "#6b21a8", moves: ["つばさでうつ", "きゅうけつ", "どくどく", "エアスラッシュ"]
+  },
   rayquaza: {
     id: 384, name: "レックウザ", type: "dragon", hp: 150, speed: 95,
     baseHp: 150, baseAtk: 120, baseDef: 80, baseSpd: 95, growthRate: 0.8,
@@ -194,6 +199,11 @@ const POKEMON_DATA = {
     id: 212, name: "メガハッサム", type: "steel", hp: 150, speed: 75,
     baseHp: 150, baseAtk: 120, baseDef: 110, baseSpd: 75, growthRate: 1.0,
     color: "#ef4444", moves: ["はがねのつばさ", "メタルクロー", "バレットパンチ", "アイアンヘッド"]
+  },
+  mega_mewtwo_x: {
+    id: 10043, name: "メガミュウツーX", type: "fighting", hp: 175, speed: 130,
+    baseHp: 175, baseAtk: 145, baseDef: 95, baseSpd: 130, growthRate: 0.8,
+    color: "#6d28d9", moves: ["サイコブレイク", "インファイト", "きんせつパンチ", "サイコキネシス"]
   },
   gengar: {
     id: 94, name: "ゲンガー", type: "ghost", hp: 150, speed: 110,
@@ -433,6 +443,11 @@ const POKEMON_DATA = {
     baseHp: 140, baseAtk: 100, baseDef: 140, baseSpd: 50, growthRate: 0.9,
     color: "#9ca3af", moves: ["アイアンヘッド", "はがねのつばさ", "じしん", "はかいこうせん"]
   },
+  golbat: {
+    id: 42, name: "ゴルバット", type: "poison", hp: 110, speed: 90,
+    baseHp: 110, baseAtk: 80, baseDef: 70, baseSpd: 90, growthRate: 1.0,
+    color: "#5b21b6", moves: ["つばさでうつ", "きゅうけつ", "どくどく", "エアスラッシュ"]
+  },
   crobat: {
     id: 169, name: "クロバット", type: "poison", hp: 130, speed: 130,
     baseHp: 130, baseAtk: 85, baseDef: 70, baseSpd: 130, growthRate: 1.0,
@@ -611,7 +626,8 @@ const EVOLUTION_MAP = {
   rayquaza: { evolved: 'mega_rayquaza', winsNeeded: 1 },
   charizard: { evolved: 'mega_charizard', winsNeeded: 1 },
   lucario: { evolved: 'mega_lucario', winsNeeded: 1 },
-  scizor: { evolved: 'mega_scizor', winsNeeded: 1 }
+  scizor: { evolved: 'mega_scizor', winsNeeded: 1 },
+  mewtwo: { evolved: 'mega_mewtwo_x', winsNeeded: 1 }
 };
 
 // レベル習得技マップ（ポケモンごとに、指定レベルで新しく習得する技）
@@ -657,6 +673,10 @@ const LEARNSET = {
   salamence: { 50: 'りゅうのまい', 55: 'そらをとぶ', 65: 'はかいこうせん' },
   // メタグロス
   metagross: { 40: 'コメットパンチ', 45: 'アイアンヘッド', 55: 'じしん' },
+  // ズバット系
+  zubat: { 6: 'つばさでうつ', 12: 'きゅうけつ', 19: 'どくどく', 25: 'エアスラッシュ' },
+  golbat: { 22: 'きゅうけつ', 28: 'エアスラッシュ', 35: 'かみくだく' },
+  crobat: { 30: 'エアスラッシュ', 38: 'かみくだく', 45: 'つばめがえし' },
 };
 
 // learnset を取得（未登録なら空オブジェクト）
